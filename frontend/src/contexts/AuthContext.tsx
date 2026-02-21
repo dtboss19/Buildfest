@@ -145,6 +145,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     let mounted = true;
+    const maxWait = window.setTimeout(() => {
+      if (mounted) setState((s) => (s.loading ? { ...s, loading: false } : s));
+    }, 5000);
 
     const init = async (retry = false) => {
       try {
@@ -207,6 +210,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       mounted = false;
+      window.clearTimeout(maxWait);
       subscription.unsubscribe();
     };
   }, [ensureProfileExists]);

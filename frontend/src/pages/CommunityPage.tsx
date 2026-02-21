@@ -23,13 +23,26 @@ export function CommunityPage() {
 
   useEffect(() => {
     let mounted = true;
+    let timeoutId: number = 0;
+    const clearTimeoutSafe = () => { if (timeoutId) window.clearTimeout(timeoutId); timeoutId = 0; };
+    timeoutId = window.setTimeout(() => {
+      timeoutId = 0;
+      if (mounted) {
+        setItems(getSeedCommunityFeedItems() as FeedItem[]);
+        setLoading(false);
+      }
+    }, 6000);
     (async () => {
       try {
-        const [photos, posts, rescues] = await Promise.all([
-          supabase.from('shelter_photos').select('id, shelter_id, created_at, is_anonymous').order('created_at', { ascending: false }).limit(30),
-          supabase.from('community_posts').select('id, shelter_id, created_at, is_anonymous, content').order('created_at', { ascending: false }).limit(30),
-          supabase.from('food_rescue_posts').select('id, created_at, is_anonymous, event_name').eq('status', 'available').order('created_at', { ascending: false }).limit(30),
+        const [photos, posts, rescues] = await Promise.race([
+          Promise.all([
+            supabase.from('shelter_photos').select('id, shelter_id, created_at, is_anonymous').order('created_at', { ascending: false }).limit(30),
+            supabase.from('community_posts').select('id, shelter_id, created_at, is_anonymous, content').order('created_at', { ascending: false }).limit(30),
+            supabase.from('food_rescue_posts').select('id, created_at, is_anonymous, event_name').eq('status', 'available').order('created_at', { ascending: false }).limit(30),
+          ]),
+          new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), 6000)),
         ]);
+        clearTimeoutSafe();
         if (!mounted) return;
         const combined: FeedItem[] = [
           ...(photos.data ?? []).map((p) => ({ id: p.id, type: 'photo' as const, shelter_id: p.shelter_id, reference_id: p.id, created_at: p.created_at, is_anonymous: p.is_anonymous })),
@@ -39,11 +52,13 @@ export function CommunityPage() {
         const seed: SeedFeedItem[] = getSeedCommunityFeedItems();
         const merged = combined.length > 0 ? combined : seed as FeedItem[];
         setItems(merged);
+      } catch {
+        if (mounted) setItems(getSeedCommunityFeedItems() as FeedItem[]);
       } finally {
         if (mounted) setLoading(false);
       }
     })();
-    return () => { mounted = false; };
+    return () => { mounted = false; clearTimeoutSafe(); };
   }, []);
 
   const typeForFilter: Record<string, FeedItem['type']> = { photos: 'photo', posts: 'post', rescues: 'rescue' };

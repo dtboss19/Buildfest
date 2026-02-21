@@ -25,23 +25,28 @@ export function CommunityChatPage() {
 
   useEffect(() => {
     let mounted = true;
-    const timeout = window.setTimeout(() => {
+    let timeoutId: number = 0;
+    const clearTimeoutSafe = () => { if (timeoutId) window.clearTimeout(timeoutId); timeoutId = 0; };
+    timeoutId = window.setTimeout(() => {
+      timeoutId = 0;
       if (mounted) {
         setRooms(getSeedChatRooms());
         setSelectedRoomId(getSeedChatRooms()[0].id);
         setLoading(false);
       }
-    }, 8000);
+    }, 5000);
     (async () => {
       try {
         const { data } = await supabase.from('chat_rooms').select('*').eq('type', 'topic').order('name', { ascending: true });
         if (!mounted) return;
+        clearTimeoutSafe();
         const list = (data ?? []) as ChatRoom[];
         setRooms(list.length > 0 ? list : getSeedChatRooms());
         if (list.length > 0 && !selectedRoomId) setSelectedRoomId(list[0].id);
         else if (list.length === 0) setSelectedRoomId(getSeedChatRooms()[0].id);
       } catch {
         if (mounted) {
+          clearTimeoutSafe();
           setRooms(getSeedChatRooms());
           setSelectedRoomId(getSeedChatRooms()[0].id);
         }
@@ -49,10 +54,7 @@ export function CommunityChatPage() {
         if (mounted) setLoading(false);
       }
     })();
-    return () => {
-      mounted = false;
-      window.clearTimeout(timeout);
-    };
+    return () => { mounted = false; clearTimeoutSafe(); };
   }, []);
 
   useEffect(() => {

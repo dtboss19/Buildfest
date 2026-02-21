@@ -16,21 +16,36 @@ export function FoodRescuePage() {
 
   useEffect(() => {
     let mounted = true;
+    let timeoutId: number = 0;
+    const clearTimeoutSafe = () => { if (timeoutId) window.clearTimeout(timeoutId); timeoutId = 0; };
+    timeoutId = window.setTimeout(() => {
+      timeoutId = 0;
+      if (mounted) {
+        setPosts(getSeedFoodRescuePosts());
+        setLoading(false);
+      }
+    }, 6000);
     (async () => {
-      const { data, error: err } = await supabase
-        .from('food_rescue_posts')
-        .select('*')
-        .in('status', ['available', 'claimed'])
-        .order('expiry_time', { ascending: true });
-      if (!mounted) return;
-      const raw = err?.message ?? null;
-      const isLockError = raw?.includes('LockManager') || raw?.includes('auth-token') || raw?.includes('timed out');
-      setError(isLockError ? null : raw);
-      const list = (data ?? []) as FoodRescuePost[];
-      setPosts(list.length > 0 ? list : getSeedFoodRescuePosts());
-      setLoading(false);
+      try {
+        const result = await Promise.race([
+          supabase.from('food_rescue_posts').select('*').in('status', ['available', 'claimed']).order('expiry_time', { ascending: true }),
+          new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), 6000)),
+        ]);
+        clearTimeoutSafe();
+        if (!mounted) return;
+        const { data, error: err } = result;
+        const raw = err?.message ?? null;
+        const isLockError = raw?.includes('LockManager') || raw?.includes('auth-token') || raw?.includes('timed out');
+        setError(isLockError ? null : raw);
+        const list = (data ?? []) as FoodRescuePost[];
+        setPosts(list.length > 0 ? list : getSeedFoodRescuePosts());
+      } catch {
+        if (mounted) setPosts(getSeedFoodRescuePosts());
+      } finally {
+        if (mounted) setLoading(false);
+      }
     })();
-    return () => { mounted = false; };
+    return () => { mounted = false; clearTimeoutSafe(); };
   }, []);
 
   const filtered = posts.filter((p) => {
