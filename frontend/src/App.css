@@ -697,6 +697,15 @@
   align-items: center;
 }
 
+@media (max-width: 480px) {
+  .sms-signup-form {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .sms-input { min-width: 0; }
+  .btn-sms-submit { width: 100%; }
+}
+
 .sms-input {
   flex: 1;
   min-width: 140px;
@@ -1015,6 +1024,14 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
+  overflow-x: hidden;
+}
+
+@media (max-width: 640px) {
+  .app-main {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
 }
 
 .page-loading {
@@ -1040,4 +1057,13 @@
 
 .login-page-reopen {
   margin-top: 1rem;
+}
+
+@media (max-width: 640px) {
+  .login-page {
+    padding: 1.5rem 1rem;
+  }
+  .page-loading {
+    padding: 1.5rem 1rem;
+  }
 }

@@ -4,6 +4,11 @@
   padding: 1.5rem;
 }
 
+@media (max-width: 640px) {
+  .edit-profile-page { padding: 1rem; }
+  .edit-profile-page h1 { font-size: 1.25rem; }
+}
+
 .edit-profile-page h1 {
   margin: 0 0 0.5rem;
   font-size: 1.5rem;

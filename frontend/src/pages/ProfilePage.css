@@ -4,6 +4,13 @@
   padding: 1.5rem;
 }
 
+@media (max-width: 640px) {
+  .profile-page { padding: 1rem; }
+  .profile-header { flex-direction: column; align-items: center; text-align: center; gap: 1rem; margin-bottom: 1.5rem; }
+  .profile-avatar { width: 100px; height: 100px; }
+  .profile-name { font-size: 1.25rem; }
+}
+
 .profile-retry-banner {
   display: flex;
   align-items: center;

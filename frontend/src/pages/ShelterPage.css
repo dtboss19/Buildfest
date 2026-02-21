@@ -71,3 +71,32 @@
   color: var(--textMuted);
   font-style: italic;
 }
+
+@media (max-width: 640px) {
+  .shelter-page {
+    padding: 1rem;
+  }
+  .shelter-page-title {
+    font-size: 1.25rem;
+  }
+  .shelter-tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    margin-left: -0.25rem;
+    margin-right: -0.25rem;
+    padding-left: 0.25rem;
+    padding-right: 0.25rem;
+  }
+  .shelter-tabs::-webkit-scrollbar {
+    display: none;
+  }
+  .shelter-tab {
+    flex-shrink: 0;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.9rem;
+  }
+  .shelter-featured-img {
+    max-height: 280px;
+  }
+}

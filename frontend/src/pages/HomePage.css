@@ -17,15 +17,48 @@
   padding-bottom: 4rem;
 }
 
+@media (max-width: 640px) {
+  .home-hero,
+  .home-stats,
+  .home-how,
+  .home-finder,
+  .home-sms,
+  .home-rescue-preview,
+  .home-community-preview {
+    padding-top: 2.5rem;
+    padding-bottom: 2.5rem;
+  }
+  .home-hero-inner,
+  .home-finder-inner,
+  .home-rescue-inner,
+  .home-community-inner {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+  .home-rescue-card {
+    flex: 0 0 260px;
+    min-width: 0;
+  }
+  .home-shelter-list-scroll {
+    min-height: 220px;
+    max-height: 320px;
+  }
+  .home-map-wrap {
+    height: 260px;
+  }
+  .home-map-wrap .map-container {
+    min-height: 260px;
+  }
+}
+
 @media (min-width: 768px) {
   .home-hero,
   .home-stats,
   .home-how,
-.home-finder,
-.home-sms,
-.home-sms,
-.home-rescue-preview,
-.home-community-preview {
+  .home-finder,
+  .home-sms,
+  .home-rescue-preview,
+  .home-community-preview {
     padding-top: 5rem;
     padding-bottom: 5rem;
   }
@@ -41,6 +74,23 @@
   margin: 0 auto;
   padding: 0 1.5rem;
   text-align: center;
+}
+
+@media (max-width: 480px) {
+  .home-hero-headline {
+    font-size: 1.6rem;
+  }
+  .home-hero-subheadline {
+    font-size: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  .home-btn {
+    padding: 0.65rem 1.25rem;
+    font-size: 0.95rem;
+  }
+  .home-section-title {
+    font-size: 1.25rem;
+  }
 }
 
 .home-hero-headline {
