@@ -40,6 +40,19 @@ npm run build
 
 Output is in `frontend/dist/`. Serve with any static host.
 
+## Deploy on Vercel
+
+1. Push your repo to GitHub (or connect another Git provider).
+2. In [Vercel](https://vercel.com), **Add New Project** and import this repo.
+3. Set **Root Directory** to `frontend` (Edit → Root Directory → `frontend`).
+4. Add **Environment Variables** (Settings → Environment Variables) so the build can embed them:
+   - `VITE_SUPABASE_URL` — your Supabase project URL (e.g. `https://xxxx.supabase.co`).
+   - `VITE_SUPABASE_ANON_KEY` — your Supabase anon/public key.
+   - Optional: `VITE_SMS_API_URL` — full URL of your deployed SMS service (e.g. `https://your-sms.railway.app`) if you use SMS/AI.
+5. Deploy. The app will be built with `npm run build` and served with SPA rewrites (see `frontend/vercel.json`).
+
+The optional SMS/AI Python service in `sms/` must be hosted separately (e.g. Railway, Render) and its URL set as `VITE_SMS_API_URL` for production.
+
 ## Data
 
 Seed data includes real and representative food shelves near St. Thomas (Keystone, Hallie Q. Brown, Neighbors Inc., Open Cupboard, etc.). For a real deployment, replace or extend `frontend/src/data/shelters.ts` with data from [Hunger Solutions](https://www.hungersolutions.org/find-help/) or the Minnesota Food HelpLine (1-888-711-1151).

@@ -15,7 +15,7 @@ const ANONYMOUS_DISPLAY = 'Anonymous Community Member';
 
 export function ShelterPhotosTab({ shelterId }: ShelterPhotosTabProps) {
   const { user, profile } = useAuth();
-  const { withAuth } = useRequireAuth();
+  const { withAuth, requireAuthModal } = useRequireAuth();
   const [photos, setPhotos] = useState<ShelterPhoto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
