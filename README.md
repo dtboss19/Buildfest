@@ -52,12 +52,18 @@ You can run the app with **only the backend** — no Supabase, no sign-in. Food 
    - Railway will detect Node and run `npm start`. The server uses `process.env.PORT` (Railway sets this).
    - After deploy, copy the public URL (e.g. `https://your-app.up.railway.app`).
 
-2. **Point the frontend at the backend**
+2. **Backend env (Railway)** — In your Railway project, add **Variables**:
+   - **`TWILIO_ACCOUNT_SID`** — from [Twilio Console](https://console.twilio.com)
+   - **`TWILIO_AUTH_TOKEN`** — from Twilio Console
+   - **`TWILIO_PHONE_NUMBER`** — your Twilio phone number (e.g. `+15551234567`) with SMS capability  
+   With these set, “Get SMS alerts” on the frontend will work (subscribe + daily digest). Optional: **`CRON_SECRET`** to protect `GET /api/send-daily?key=...` for cron-triggered daily texts.
+
+3. **Point the frontend at the backend**
    - In **Vercel** (or your frontend host), add one environment variable:  
      **`VITE_API_URL`** = your Railway backend URL (e.g. `https://your-app.up.railway.app`). If you omit `https://`, it is added automatically.
-   - Do **not** set `VITE_SUPABASE_URL` or `VITE_SUPABASE_ANON_KEY`. With only `VITE_API_URL` set, the app uses the backend for Food Rescue and Chat and makes no Supabase connections.
+   - Do **not** set `VITE_SUPABASE_URL` or `VITE_SUPABASE_ANON_KEY`. With only `VITE_API_URL` set, the app uses the backend for Food Rescue, Chat, and **SMS alerts** (no separate SMS service needed).
 
-3. Redeploy the frontend so the new env is baked in. Create post and Community chat will work without any sign-in.
+4. Redeploy the frontend so the new env is baked in. Create post, Community chat, and SMS signup will work without any sign-in.
 
 **Note:** The backend uses SQLite and local file uploads. On Railway the filesystem is ephemeral, so data and uploads are lost on redeploy unless you add a persistent volume. For production you may want to switch to a hosted DB (e.g. PostgreSQL) and object storage later.
 
@@ -103,16 +109,16 @@ Seed data includes real and representative food shelves near St. Thomas (Keyston
 
 ## SMS alerts (optional)
 
-To enable “Get SMS alerts” on the frontend:
+SMS is **built into the Node backend** (Railway). No separate Python service needed.
 
-1. In `sms/`: copy `.env.example` to `.env` and set your Twilio credentials (Account SID, Auth Token, phone number).
-2. Run the Python service: `cd sms && pip install -r requirements.txt && python app.py` (listens on port 5000).
-3. In dev the frontend calls `http://localhost:5000` by default. For production set `VITE_SMS_API_URL` to your deployed SMS service URL.
-4. Call `GET /api/send-daily` once per day (e.g. via cron) to send today’s digest to all subscribers.
+1. **Backend (Railway or local)** — Set in your backend env:
+   - `TWILIO_ACCOUNT_SID` — from [Twilio Console](https://console.twilio.com)
+   - `TWILIO_AUTH_TOKEN`
+   - `TWILIO_PHONE_NUMBER` — e.g. `+15551234567` (must have SMS capability)
+2. **Frontend** — Uses `VITE_API_URL` for SMS when set (same as Food Rescue/Chat). In dev with no env, it defaults to `http://localhost:3001`.
+3. **Daily digest** — Call `GET /api/send-daily` (or `POST`) once per day (e.g. cron). Optional: set `CRON_SECRET` and call with `?key=your_secret`.
 
-For **AI food detection** in photos, set `ANTHROPIC_API_KEY` in `sms/.env` (Claude API credits). The frontend sends uploaded images to `POST /api/analyze-food-image` on the same service.
-
-See `sms/README.md` for API details and Twilio setup.
+The standalone Python service in `sms/` is still available for **AI food detection** in photos (Claude) and the chat assistant; set `VITE_SMS_API_URL` to that service if you use it. For SMS-only, the backend is enough.
 
 ## Community layer (Supabase)
 
