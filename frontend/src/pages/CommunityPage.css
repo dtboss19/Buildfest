@@ -47,7 +47,7 @@
 .empty-state { text-align: center; padding: 2rem; color: var(--textMuted); }
 .empty-state-icon { font-size: 2.5rem; display: block; margin-bottom: 0.5rem; }
 
-@media (max-width: 390px) {
-  .community-layout { flex-direction: column; }
-  .community-sidebar { flex: 1 1 auto; }
+@media (max-width: 640px) {
+  .community-page { padding: 1rem; }
+  .community-sidebar { flex: 1 1 100%; }
 }
