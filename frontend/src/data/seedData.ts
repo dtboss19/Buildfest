@@ -23,6 +23,8 @@ export function getSeedFoodRescuePosts(): FoodRescuePost[] {
   const created2 = new Date(NOW - 2 * MS_HOUR).toISOString();
   const expiry2 = new Date(NOW + 5 * MS_HOUR).toISOString();
   const created3 = new Date(NOW - 24 * MS_HOUR).toISOString();
+  const created4 = new Date(NOW - 90 * MS_MIN).toISOString();
+  const expiry4 = new Date(NOW + 6 * MS_HOUR).toISOString();
 
   return [
     {
@@ -50,7 +52,7 @@ export function getSeedFoodRescuePosts(): FoodRescuePost[] {
       event_name: 'Corporate Lunch - Ecolab HQ',
       description: 'Boxed lunches — sandwiches, chips, cookies, fruit cups. ~40 boxes remaining.',
       quantity: '40 individual boxes',
-      photo_url: null,
+      photo_url: 'https://images.unsplash.com/photo-1585032226651-759b368d7246?w=400&q=80',
       location: null,
       location_lat: null,
       location_lng: null,
@@ -68,8 +70,8 @@ export function getSeedFoodRescuePosts(): FoodRescuePost[] {
       user_id: '00000000-0000-0000-0000-000000000003',
       event_name: 'Church Potluck - Hamline United Methodist',
       description: 'Homemade dishes — soups, casseroles, baked goods',
-      quantity: null,
-      photo_url: null,
+      quantity: 'Serves ~30',
+      photo_url: 'https://images.unsplash.com/photo-1547592166-23ac45744acd?w=400&q=80',
       location: null,
       location_lat: null,
       location_lng: null,
@@ -82,6 +84,25 @@ export function getSeedFoodRescuePosts(): FoodRescuePost[] {
       special_notes: null,
       created_at: created3,
     },
+    {
+      id: 'seed-rescue-4',
+      user_id: '00000000-0000-0000-0000-000000000001',
+      event_name: 'Campus Event - O\'Shaughnessy',
+      description: 'Sandwich platters, fruit trays, and bottled water. Perfect for pickup by a shelter.',
+      quantity: '~50 servings',
+      photo_url: 'https://images.unsplash.com/photo-1555244162-803834f70033?w=400&q=80',
+      location: 'St. Paul, MN',
+      location_lat: null,
+      location_lng: null,
+      pickup_type: 'both',
+      expiry_time: expiry4,
+      status: 'available',
+      claimed_by: null,
+      claimed_at: null,
+      is_anonymous: true,
+      special_notes: null,
+      created_at: created4,
+    },
   ];
 }
 
@@ -93,8 +114,11 @@ export function getSeedShelterPhotos(): ShelterPhoto[] {
   const photos: { shelter_id: string; caption: string; is_staff: boolean; url: string }[] = [
     { shelter_id: 'keystone', caption: 'Great volunteers here every Tuesday!', is_staff: true, url: 'https://images.unsplash.com/photo-1593113598332-cd288d649433?w=400&q=80' },
     { shelter_id: 'keystone', caption: 'Fresh produce available today', is_staff: false, url: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=400&q=80' },
-    { shelter_id: 'open-hands-midway', caption: 'Great volunteers here every Tuesday!', is_staff: false, url: 'https://images.unsplash.com/photo-1488459716781-31db52582fe9?w=400&q=80' },
-    { shelter_id: 'open-hands-midway', caption: 'Fresh produce available today', is_staff: true, url: 'https://images.unsplash.com/photo-1534939561126-855b8675edd7?w=400&q=80' },
+    { shelter_id: 'keystone', caption: 'Pantry shelves stocked and ready', is_staff: true, url: 'https://images.unsplash.com/photo-1488459716781-31db52582fe9?w=400&q=80' },
+    { shelter_id: 'open-hands-midway', caption: 'Community distribution day', is_staff: false, url: 'https://images.unsplash.com/photo-1534939561126-855b8675edd7?w=400&q=80' },
+    { shelter_id: 'open-hands-midway', caption: 'Fresh produce available today', is_staff: true, url: 'https://images.unsplash.com/photo-1544025162-d76694265947?w=400&q=80' },
+    { shelter_id: 'neighbors-inc', caption: 'Friendly staff and plenty of options', is_staff: true, url: 'https://images.unsplash.com/photo-1585032226651-759b368d7246?w=400&q=80' },
+    { shelter_id: 'hallie-q-brown', caption: 'Open and welcoming to all', is_staff: false, url: 'https://images.unsplash.com/photo-1547592166-23ac45744acd?w=400&q=80' },
   ];
   photos.forEach((p, i) => {
     out.push({

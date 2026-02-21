@@ -6,6 +6,7 @@ import { foodShelters, DAY_NAMES } from '../data/shelters';
 import { WeekStrip } from '../components/WeekStrip';
 import { ShelterCard } from '../components/ShelterCard';
 import { MapPanel } from '../components/MapPanel';
+import { SmsSignup } from '../components/SmsSignup';
 import { isOpenAtTime, getFirstOpenTime, formatTime } from '../utils/time';
 import { getSeedFoodRescuePosts } from '../data/seedData';
 import { getSeedChatMessages } from '../data/seedData';
@@ -91,6 +92,9 @@ export function HomePage() {
   const scrollToFinder = () => {
     document.getElementById(SHELTER_FINDER_ID)?.scrollIntoView({ behavior: 'smooth' });
   };
+  const scrollToSms = () => {
+    document.getElementById('sms-alerts')?.scrollIntoView({ behavior: 'smooth' });
+  };
 
   const seedRescues = getSeedFoodRescuePosts().filter((r) => r.status === 'available').slice(0, 3);
   const seedQuotes = [
@@ -99,7 +103,7 @@ export function HomePage() {
   ].filter(Boolean);
 
   useEffect(() => {
-    const sections = document.querySelectorAll('.home-hero, .home-stats, .home-how, .home-finder, .home-rescue-preview, .home-community-preview');
+    const sections = document.querySelectorAll('.home-hero, .home-stats, .home-how, .home-finder, .home-sms, .home-rescue-preview, .home-community-preview');
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -128,6 +132,9 @@ export function HomePage() {
             <Link to="/food-rescue/new" className="home-btn home-btn-secondary">
               Share Surplus Food
             </Link>
+            <button type="button" className="home-btn home-btn-tertiary" onClick={scrollToSms}>
+              Get text alerts
+            </button>
           </div>
         </div>
       </section>
@@ -156,12 +163,19 @@ export function HomePage() {
 
       {/* Section 3: How It Works */}
       <section className="home-how">
-        <div className="home-how-inner">
+        <div className="home-how-inner home-how-four">
           <div className="home-how-col">
             <span className="home-how-icon">🗓️</span>
             <h3 className="home-how-title">Find food any day</h3>
             <p className="home-how-desc">
               Browse food shelves open today, this week, or any day. Filter by distance and what you need.
+            </p>
+          </div>
+          <div className="home-how-col">
+            <span className="home-how-icon">📱</span>
+            <h3 className="home-how-title">Daily text alerts</h3>
+            <p className="home-how-desc">
+              Get a text each morning with the closest food shelves open that day. No app to open — just check your phone.
             </p>
           </div>
           <div className="home-how-col">
@@ -229,7 +243,14 @@ export function HomePage() {
         </div>
       </section>
 
-      {/* Section 5: Food Rescue Preview */}
+      {/* Section 5: SMS alerts (selling point) */}
+      <section id="sms-alerts" className="home-sms">
+        <div className="home-sms-inner">
+          <SmsSignup />
+        </div>
+      </section>
+
+      {/* Section 6: Food Rescue Preview */}
       <section className="home-rescue-preview">
         <div className="home-rescue-inner">
           <h2 className="home-section-title">Surplus food available now</h2>
@@ -255,7 +276,7 @@ export function HomePage() {
         </div>
       </section>
 
-      {/* Section 6: Community Preview */}
+      {/* Section 7: Community Preview */}
       <section className="home-community-preview">
         <div className="home-community-inner">
           <h2 className="home-section-title">What people are saying</h2>
@@ -270,7 +291,7 @@ export function HomePage() {
         </div>
       </section>
 
-      {/* Section 7: Footer */}
+      {/* Section 8: Footer */}
       <footer className="home-footer">
         <div className="home-footer-inner">
           <p className="home-footer-tagline">Common Table — Food resources for everyone, every day.</p>
