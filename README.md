@@ -54,7 +54,7 @@ You can run the app with **only the backend** — no Supabase, no sign-in. Food 
 
 2. **Point the frontend at the backend**
    - In **Vercel** (or your frontend host), add one environment variable:  
-     **`VITE_API_URL`** = your Railway backend URL (e.g. `https://your-app.up.railway.app`).
+     **`VITE_API_URL`** = your Railway backend URL (e.g. `https://your-app.up.railway.app`). If you omit `https://`, it is added automatically.
    - Do **not** set `VITE_SUPABASE_URL` or `VITE_SUPABASE_ANON_KEY`. With only `VITE_API_URL` set, the app uses the backend for Food Rescue and Chat and makes no Supabase connections.
 
 3. Redeploy the frontend so the new env is baked in. Create post and Community chat will work without any sign-in.

@@ -5,7 +5,8 @@
 
 import { getRandomGuestName } from '../utils/randomGuestName';
 
-const API_URL = (import.meta.env.VITE_API_URL ?? '').trim().replace(/\/$/, '');
+const raw = (import.meta.env.VITE_API_URL ?? '').trim().replace(/\/$/, '');
+const API_URL = raw && !/^https?:\/\//i.test(raw) ? `https://${raw}` : raw;
 
 const GUEST_NAME_KEY = 'common-table-guest-name';
 
