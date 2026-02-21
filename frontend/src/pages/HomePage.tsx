@@ -15,15 +15,6 @@ import './HomePage.css';
 
 const SHELTER_FINDER_ID = 'shelter-finder';
 
-type DietaryFilter = 'all' | 'vegetarian' | 'halal' | 'kosher' | 'gluten-free' | 'no-requirements';
-
-function shelterMatchesDietary(shelter: FoodShelter, filter: DietaryFilter): boolean {
-  const opts = shelter.dietary_options ?? ['no-requirements'];
-  if (filter === 'all') return true;
-  if (filter === 'no-requirements') return opts.length === 0 || opts.includes('no-requirements');
-  return opts.includes(filter);
-}
-
 function getOpenNowCount(
   sheltersForDay: { shelter: FoodShelter; daySchedule: { slots: { open: string; close: string }[] } | undefined }[],
   currentDay: DayOfWeek,
@@ -76,17 +67,14 @@ export function HomePage() {
   const now = new Date();
   const nowMinutes = now.getHours() * 60 + now.getMinutes();
   const [selectedDay, setSelectedDay] = useState<DayOfWeek>(() => today);
-  const [dietaryFilter, setDietaryFilter] = useState<DietaryFilter>('all');
 
   const sheltersForDay = useMemo(
     () =>
-      foodShelters
-        .filter((s) => shelterMatchesDietary(s, dietaryFilter))
-        .map((shelter) => ({
-          shelter,
-          daySchedule: shelter.schedule.find((e) => e.day === selectedDay),
-        })),
-    [selectedDay, dietaryFilter]
+      foodShelters.map((shelter) => ({
+        shelter,
+        daySchedule: shelter.schedule.find((e) => e.day === selectedDay),
+      })),
+    [selectedDay]
   );
 
   const sheltersWithPins = useMemo(() => sheltersForDay.map((x) => x.shelter), [sheltersForDay]);
@@ -112,24 +100,12 @@ export function HomePage() {
   const openRightNowShelters = useMemo(() => {
     if (selectedDay !== today) return [];
     return foodShelters
-      .filter((s) => shelterMatchesDietary(s, dietaryFilter))
       .map((s) => ({ shelter: s, daySchedule: s.schedule.find((e) => e.day === today) }))
       .filter((x) => x.daySchedule && isOpenAtTime(x.daySchedule.slots, nowMinutes))
       .sort((a, b) => a.shelter.distanceMiles - b.shelter.distanceMiles)
       .slice(0, 3);
-  }, [selectedDay, today, nowMinutes, dietaryFilter]);
-  const seedQuotes = [
-    ...getSeedChatMessages('General Discussion').slice(0, 2),
-    getSeedChatMessages('Recipes with Food Shelf Items')[0],
-  ].filter(Boolean);
-
-  const recipeOfTheWeek = {
-    title: 'Simple Rice & Bean Bowl',
-    prep: '~20 min',
-    ingredients: 'Rice, canned beans, canned tomatoes, onion, garlic, salt, pepper, oil',
-    steps: '1. Cook rice. 2. Sauté onion and garlic in oil. 3. Add canned tomatoes and beans, simmer 10 min. 4. Season with salt and pepper. 5. Serve over rice.',
-  };
-  const [recipeWeekExpanded, setRecipeWeekExpanded] = useState(false);
+  }, [selectedDay, today, nowMinutes]);
+  const seedQuotes = getSeedChatMessages('General Discussion').slice(0, 3);
 
   useEffect(() => {
     const sections = document.querySelectorAll('.home-hero, .home-how, .home-finder, .home-sms, .home-rescue-preview, .home-community-preview');
@@ -164,9 +140,6 @@ export function HomePage() {
             <button type="button" className="home-btn home-btn-tertiary" onClick={scrollToSms}>
               Get text alerts
             </button>
-            <Link to="/community/chat" className="home-btn home-btn-tertiary">
-              Chat
-            </Link>
           </div>
         </div>
       </section>
@@ -230,18 +203,6 @@ export function HomePage() {
           <h2 className="home-section-title">Find food near you</h2>
           <p className="home-section-subtitle">Open today and this week near St. Paul & Minneapolis</p>
 
-          <div className="home-finder-dietary">
-            {(['all', 'vegetarian', 'halal', 'kosher', 'gluten-free', 'no-requirements'] as const).map((f) => (
-              <button
-                key={f}
-                type="button"
-                className={`home-dietary-pill ${dietaryFilter === f ? 'active' : ''}`}
-                onClick={() => setDietaryFilter(f)}
-              >
-                {f === 'all' ? 'All' : f === 'no-requirements' ? 'No Requirements' : f === 'gluten-free' ? 'Gluten-Free' : f === 'halal' ? 'Halal' : f === 'kosher' ? 'Kosher' : 'Vegetarian'}
-              </button>
-            ))}
-          </div>
           <div className="home-finder-two-col">
             <div className="home-finder-left">
               <div className="home-finder-week">
@@ -320,27 +281,6 @@ export function HomePage() {
             })}
           </div>
           <Link to="/food-rescue" className="home-see-all">See all →</Link>
-        </div>
-      </section>
-
-      {/* Recipe of the week */}
-      <section className="home-recipe-week">
-        <div className="home-recipe-week-inner">
-          <h2 className="home-recipe-week-title">🍳 Recipe of the week</h2>
-          <p className="home-recipe-week-sub">Made with common food shelf items</p>
-          <div className="home-recipe-week-card">
-            <h3 className="home-recipe-week-name">{recipeOfTheWeek.title}</h3>
-            <p className="home-recipe-week-prep">⏱ {recipeOfTheWeek.prep}</p>
-            <button type="button" className="home-recipe-week-toggle" onClick={() => setRecipeWeekExpanded((e) => !e)}>
-              {recipeWeekExpanded ? 'Collapse' : 'See full recipe'}
-            </button>
-            {recipeWeekExpanded && (
-              <div className="home-recipe-week-full">
-                <p className="home-recipe-week-ingredients"><strong>Ingredients:</strong> {recipeOfTheWeek.ingredients}</p>
-                <p className="home-recipe-week-steps"><strong>Steps:</strong> {recipeOfTheWeek.steps}</p>
-              </div>
-            )}
-          </div>
         </div>
       </section>
 

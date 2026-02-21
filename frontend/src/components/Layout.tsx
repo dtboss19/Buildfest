@@ -1,7 +1,6 @@
 import React from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { Navbar } from './Navbar';
-import { AIChatBot } from './AIChatBot';
 import { hasSupabaseConfig } from '../lib/supabase';
 import { hasApiConfig } from '../lib/api';
 
@@ -20,7 +19,6 @@ export function Layout() {
           <Outlet />
         </div>
       </main>
-      <AIChatBot />
     </div>
   );
 }
