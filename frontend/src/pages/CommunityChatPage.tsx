@@ -12,10 +12,11 @@ const FAKE_MEMBER_COUNT = 24;
 const PREVIEW_MESSAGE_COUNT = 3;
 
 export function CommunityChatPage() {
-  const { user } = useAuth();
+  const { user, ensureAnonymousSession } = useAuth();
   const [rooms, setRooms] = useState<ChatRoom[]>([]);
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [displayNamesByUserId, setDisplayNamesByUserId] = useState<Record<string, string>>({});
   const [content, setContent] = useState('');
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -66,15 +67,47 @@ export function CommunityChatPage() {
     return () => { supabase.removeChannel(channel); };
   }, [selectedRoomId]);
 
+  useEffect(() => {
+    if (!selectedRoomId || selectedRoomId.startsWith('seed-') || messages.length === 0) return;
+    const userIds = [...new Set(messages.map((m) => m.user_id))];
+    if (userIds.length === 0) return;
+    const p = supabase
+      .from('user_profiles')
+      .select('user_id, display_name')
+      .in('user_id', userIds)
+      .then(({ data }) => {
+        const map: Record<string, string> = {};
+        (data ?? []).forEach((row: { user_id: string; display_name: string }) => {
+          map[row.user_id] = row.display_name ?? 'User';
+        });
+        setDisplayNamesByUserId((prev) => ({ ...prev, ...map }));
+      });
+    void Promise.resolve(p).catch(() => {});
+  }, [selectedRoomId, messages]);
+
+  const getDisplayName = (m: ChatMessage): string => {
+    if (m.is_anonymous) return ANONYMOUS_DISPLAY;
+    return displayNamesByUserId[m.user_id] ?? 'User';
+  };
+
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     setSendError(null);
-    if (!user || !selectedRoomId || !content.trim()) return;
+    if (!selectedRoomId || !content.trim()) return;
     if (selectedRoomId.startsWith('seed-')) return;
     setSending(true);
+    let currentUser = user;
+    if (!currentUser) {
+      currentUser = await ensureAnonymousSession();
+      if (!currentUser) {
+        setSendError('Unable to sign you in. Please try again.');
+        setSending(false);
+        return;
+      }
+    }
     const { error } = await supabase.from('chat_messages').insert({
       room_id: selectedRoomId,
-      user_id: user.id,
+      user_id: currentUser.id,
       content: content.trim(),
       is_anonymous: isAnonymous,
     });
@@ -120,7 +153,7 @@ export function CommunityChatPage() {
                   <div className="chat-room-preview">
                     {preview.map((m) => (
                       <div key={m.id} className="chat-room-preview-msg">
-                        {m.is_anonymous ? ANONYMOUS_DISPLAY : 'User'}: {m.content.slice(0, 40)}{m.content.length > 40 ? '…' : ''}
+                        {getDisplayName(m)}: {m.content.slice(0, 40)}{m.content.length > 40 ? '…' : ''}
                       </div>
                     ))}
                   </div>
@@ -135,7 +168,7 @@ export function CommunityChatPage() {
               <div className="chat-messages">
                 {messages.map((m) => (
                   <div key={m.id} className="chat-msg">
-                    <span className="chat-msg-name">{m.is_anonymous ? ANONYMOUS_DISPLAY : 'User'}</span>
+                    <span className="chat-msg-name">{getDisplayName(m)}</span>
                     <span className="chat-msg-content">{m.content}</span>
                     <span className="chat-msg-time">{formatRelativeTime(m.created_at)}</span>
                   </div>
@@ -148,7 +181,7 @@ export function CommunityChatPage() {
                   {sendError && <p className="chat-send-error">{sendError}</p>}
                   <AnonymousToggle checked={isAnonymous} onChange={setIsAnonymous} label="Send anonymously" />
                   <input type="text" placeholder="Type a message…" value={content} onChange={(e) => setContent(e.target.value)} disabled={sending} />
-                  <button type="submit" className="btn btn-primary" disabled={sending || !user}>{sending ? 'Sending…' : 'Send'}</button>
+                  <button type="submit" className="btn btn-primary" disabled={sending}>{sending ? 'Sending…' : 'Send'}</button>
                 </form>
               )}
             </>

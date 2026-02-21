@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { supabase, hasSupabaseConfig } from '../lib/supabase';
+import { getRandomGuestName } from '../utils/randomGuestName';
 import type { UserProfile } from '../types/database';
 
 interface AuthState {
@@ -16,6 +17,7 @@ interface AuthContextValue extends AuthState {
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
   ensureMyProfile: () => Promise<UserProfile | null>;
+  ensureAnonymousSession: () => Promise<User | null>;
   setError: (err: string | null) => void;
 }
 
@@ -66,12 +68,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const ensureProfileExists = useCallback(async (user: User): Promise<UserProfile | null> => {
     let profile = await fetchProfile(user.id);
-    if (profile) return profile;
     const isAnonymous = user.is_anonymous === true;
+    const defaultOrAnon = (isAnonymous ? getRandomGuestName() : (user.email ? user.email.split('@')[0] : 'User'));
     const displayName =
       (user.user_metadata?.display_name as string)?.trim() ||
-      (isAnonymous ? 'Anonymous' : (user.email ? user.email.split('@')[0] : 'User')) ||
+      defaultOrAnon ||
       'User';
+    if (profile) {
+      if (isAnonymous && (profile.display_name === 'User' || profile.display_name === 'Anonymous')) {
+        const randomName = getRandomGuestName();
+        await supabase.from('user_profiles').update({ display_name: randomName }).eq('user_id', user.id);
+        return fetchProfile(user.id);
+      }
+      return profile;
+    }
     const { error: insertErr } = await supabase.from('user_profiles').insert({
       user_id: user.id,
       display_name: displayName,
@@ -113,6 +123,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const profile = await ensureProfileExists(currentUser);
     setState((s) => (s.user?.id === currentUser.id ? { ...s, profile: profile ?? null } : s));
     return profile;
+  }, [ensureProfileExists]);
+
+  const ensureAnonymousSession = useCallback(async (): Promise<User | null> => {
+    const { data, error } = await supabase.auth.signInAnonymously();
+    if (error || !data.session?.user) return null;
+    const sessionUser = data.session.user;
+    const profile = await ensureProfileExists(sessionUser).catch(() => null);
+    setState({ user: sessionUser, profile: profile ?? null, loading: false, error: null });
+    return sessionUser;
   }, [ensureProfileExists]);
 
   useEffect(() => {
@@ -310,6 +329,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         signOut,
         refreshProfile,
         ensureMyProfile,
+        ensureAnonymousSession,
         setError,
       }}
     >

@@ -2,15 +2,13 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { useRequireAuth } from '../hooks/useRequireAuth';
 import { AnonymousToggle } from '../components/AnonymousToggle';
 import type { PickupType } from '../types/database';
 import './FoodRescueNewPage.css';
 
 export function FoodRescueNewPage() {
   const navigate = useNavigate();
-  const { user, loading: authLoading } = useAuth();
-  const { withAuth } = useRequireAuth();
+  const { user, loading: authLoading, ensureAnonymousSession } = useAuth();
   const [eventName, setEventName] = useState('');
   const [description, setDescription] = useState('');
   const [quantity, setQuantity] = useState('');
@@ -18,49 +16,55 @@ export function FoodRescueNewPage() {
   const [expiryTime, setExpiryTime] = useState('');
   const [pickupType, setPickupType] = useState<PickupType>('both');
   const [specialNotes, setSpecialNotes] = useState('');
-  const [isAnonymous, setIsAnonymous] = useState(false);
+  const [isAnonymous, setIsAnonymous] = useState(true);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
-    withAuth(async () => {
-      if (!user || !eventName.trim() || !expiryTime) return;
-      setLoading(true);
-      setError(null);
-      try {
-        let photoUrl: string | null = null;
-        if (photoFile) {
-          const ext = photoFile.name.split('.').pop() || 'jpg';
-          const path = `${user.id}/${Date.now()}.${ext}`;
-          const { error: upErr } = await supabase.storage.from('food-rescue-photos').upload(path, photoFile, { upsert: true });
-          if (upErr) throw upErr;
-          const { data: urlData } = supabase.storage.from('food-rescue-photos').getPublicUrl(path);
-          photoUrl = urlData.publicUrl;
-        }
-        const { error: insertErr } = await supabase.from('food_rescue_posts').insert({
-          user_id: user.id,
-          event_name: eventName.trim(),
-          description: description.trim() || null,
-          quantity: quantity.trim() || null,
-          photo_url: photoUrl,
-          location: location.trim() || null,
-          pickup_type: pickupType,
-          expiry_time: new Date(expiryTime).toISOString(),
-          status: 'available',
-          is_anonymous: isAnonymous,
-          special_notes: specialNotes.trim() || null,
-        });
-        if (insertErr) throw insertErr;
-        navigate('/food-rescue');
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to create post');
-      } finally {
+    if (!eventName.trim() || !expiryTime) return;
+    setLoading(true);
+    setError(null);
+    let currentUser = user;
+    if (!currentUser) {
+      currentUser = await ensureAnonymousSession();
+      if (!currentUser) {
+        setError('Unable to sign you in. Please try again.');
         setLoading(false);
+        return;
       }
-    })();
+    }
+    try {
+      let photoUrl: string | null = null;
+      if (photoFile) {
+        const ext = photoFile.name.split('.').pop() || 'jpg';
+        const path = `${currentUser.id}/${Date.now()}.${ext}`;
+        const { error: upErr } = await supabase.storage.from('food-rescue-photos').upload(path, photoFile, { upsert: true });
+        if (upErr) throw upErr;
+        const { data: urlData } = supabase.storage.from('food-rescue-photos').getPublicUrl(path);
+        photoUrl = urlData.publicUrl;
+      }
+      const { error: insertErr } = await supabase.from('food_rescue_posts').insert({
+        user_id: currentUser.id,
+        event_name: eventName.trim(),
+        description: description.trim() || null,
+        quantity: quantity.trim() || null,
+        photo_url: photoUrl,
+        location: location.trim() || null,
+        pickup_type: pickupType,
+        expiry_time: new Date(expiryTime).toISOString(),
+        status: 'available',
+        is_anonymous: isAnonymous,
+        special_notes: specialNotes.trim() || null,
+      });
+      if (insertErr) throw insertErr;
+      navigate('/food-rescue');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create post');
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (authLoading) {
@@ -70,7 +74,7 @@ export function FoodRescueNewPage() {
   return (
     <div className="food-rescue-new-page">
       <h1>Create food rescue post</h1>
-      {!user && <p className="error">Unable to sign you in. Please refresh the page and try again.</p>}
+      <p className="food-rescue-new-hint">No account needed — you’ll get a random name. Post as anonymous if you prefer.</p>
       {error && <p className="error">{error}</p>}
       <form onSubmit={handleSubmit} className="rescue-form">
         <label>Event name <input type="text" value={eventName} onChange={(e) => setEventName(e.target.value)} required /></label>
@@ -87,7 +91,7 @@ export function FoodRescueNewPage() {
         </fieldset>
         <AnonymousToggle checked={isAnonymous} onChange={setIsAnonymous} />
         <label>Special notes <textarea value={specialNotes} onChange={(e) => setSpecialNotes(e.target.value)} rows={2} /></label>
-        <button type="submit" className="btn btn-primary" disabled={loading || !user}>{loading ? 'Creating…' : 'Create post'}</button>
+        <button type="submit" className="btn btn-primary" disabled={loading}>{loading ? 'Creating…' : 'Create post'}</button>
       </form>
     </div>
   );
