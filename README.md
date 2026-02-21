@@ -10,9 +10,14 @@ External resource for the University of St. Thomas (St. Paul, MN) community when
 - **All locations** — Every listed shelter is shown for the selected day; “Open today” badge and hours when open, “Closed today” when not.
 - **Hours & meal times** — Operating hours and when food/meals are available.
 - **Eligibility** — Requirements (area served, ID, etc.) where applicable.
-- **Community photos** — “Add photo” on any shelter to upload an image (e.g. what’s available). Stored in the browser only for the hackathon demo.
+- **Community photos** — “Add photo” on any shelter to upload an image (e.g. what’s available). Stored in Supabase; optional AI detection when the SMS service is connected.
 - **SMS alerts** — Opt in with a phone number to get daily texts with the closest food shelves open that day (requires the Python SMS service and Twilio).
 - **AI food detection** — Upload a photo of what’s at a location; the app uses Claude to detect food items and estimated quantity, then shows “Detected: [item] — [quantity]” on the photo (requires the Python service and `ANTHROPIC_API_KEY`).
+
+## Launch checklist
+
+1. **Supabase** — Create a project, run `supabase/migrations/001_initial_schema.sql`, create storage buckets (`avatars`, `shelter-photos`, `food-rescue-photos`), then set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in `frontend/.env`.
+2. **Optional: SMS + AI** — To enable SMS signup and AI food detection on photos, set `VITE_SMS_API_URL` in `frontend/.env` and run the `sms/` service (see [SMS alerts](#sms-alerts-optional) below).
 
 ## Run locally
 

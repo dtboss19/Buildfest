@@ -14,6 +14,11 @@ export function LoginPage() {
     <div className="login-page">
       <SignInModal isOpen={modalOpen} onClose={() => setModalOpen(false)} />
       <p className="login-page-hint">Sign in or create an account to contribute.</p>
+      {!modalOpen && (
+        <button type="button" className="btn btn-primary login-page-reopen" onClick={() => setModalOpen(true)}>
+          Sign in
+        </button>
+      )}
     </div>
   );
 }

@@ -24,21 +24,24 @@ export function CommunityPage() {
   useEffect(() => {
     let mounted = true;
     (async () => {
-      const [photos, posts, rescues] = await Promise.all([
-        supabase.from('shelter_photos').select('id, shelter_id, created_at, is_anonymous').order('created_at', { ascending: false }).limit(30),
-        supabase.from('community_posts').select('id, shelter_id, created_at, is_anonymous, content').order('created_at', { ascending: false }).limit(30),
-        supabase.from('food_rescue_posts').select('id, created_at, is_anonymous, event_name').eq('status', 'available').order('created_at', { ascending: false }).limit(30),
-      ]);
-      if (!mounted) return;
-      const combined: FeedItem[] = [
-        ...(photos.data ?? []).map((p) => ({ id: p.id, type: 'photo' as const, shelter_id: p.shelter_id, reference_id: p.id, created_at: p.created_at, is_anonymous: p.is_anonymous })),
-        ...(posts.data ?? []).map((p) => ({ id: p.id, type: 'post' as const, shelter_id: p.shelter_id, reference_id: p.id, created_at: p.created_at, is_anonymous: p.is_anonymous, description: (p as { content?: string }).content?.slice(0, 80) })),
-        ...(rescues.data ?? []).map((r) => ({ id: r.id, type: 'rescue' as const, shelter_id: null, reference_id: r.id, created_at: r.created_at, is_anonymous: r.is_anonymous, description: (r as { event_name?: string }).event_name })),
-      ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-      const seed: SeedFeedItem[] = getSeedCommunityFeedItems();
-      const merged = combined.length > 0 ? combined : seed as FeedItem[];
-      setItems(merged);
-      setLoading(false);
+      try {
+        const [photos, posts, rescues] = await Promise.all([
+          supabase.from('shelter_photos').select('id, shelter_id, created_at, is_anonymous').order('created_at', { ascending: false }).limit(30),
+          supabase.from('community_posts').select('id, shelter_id, created_at, is_anonymous, content').order('created_at', { ascending: false }).limit(30),
+          supabase.from('food_rescue_posts').select('id, created_at, is_anonymous, event_name').eq('status', 'available').order('created_at', { ascending: false }).limit(30),
+        ]);
+        if (!mounted) return;
+        const combined: FeedItem[] = [
+          ...(photos.data ?? []).map((p) => ({ id: p.id, type: 'photo' as const, shelter_id: p.shelter_id, reference_id: p.id, created_at: p.created_at, is_anonymous: p.is_anonymous })),
+          ...(posts.data ?? []).map((p) => ({ id: p.id, type: 'post' as const, shelter_id: p.shelter_id, reference_id: p.id, created_at: p.created_at, is_anonymous: p.is_anonymous, description: (p as { content?: string }).content?.slice(0, 80) })),
+          ...(rescues.data ?? []).map((r) => ({ id: r.id, type: 'rescue' as const, shelter_id: null, reference_id: r.id, created_at: r.created_at, is_anonymous: r.is_anonymous, description: (r as { event_name?: string }).event_name })),
+        ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        const seed: SeedFeedItem[] = getSeedCommunityFeedItems();
+        const merged = combined.length > 0 ? combined : seed as FeedItem[];
+        setItems(merged);
+      } finally {
+        if (mounted) setLoading(false);
+      }
     })();
     return () => { mounted = false; };
   }, []);

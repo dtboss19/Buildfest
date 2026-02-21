@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useRequireAuth } from '../../hooks/useRequireAuth';
 import { AnonymousToggle } from '../AnonymousToggle';
 import { formatRelativeTime } from '../../utils/formatDate';
+import { analyzeFoodImage } from '../../api/analyzeFood';
 import type { ShelterPhoto } from '../../types/database';
 
 interface ShelterPhotosTabProps {
@@ -77,6 +78,22 @@ export function ShelterPhotosTab({ shelterId }: ShelterPhotosTabProps) {
         setCaption('');
         setIsAnonymous(false);
         if (newRow) setPhotos((prev) => [newRow as ShelterPhoto, ...prev]);
+        // Optional: run AI food detection and update the row (non-blocking)
+        if (newRow?.id) {
+          const dataUrl = await new Promise<string | null>((resolve) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : null);
+            reader.onerror = () => resolve(null);
+            reader.readAsDataURL(file);
+          });
+          if (dataUrl) {
+            const analysis = await analyzeFoodImage(dataUrl);
+            if (analysis?.items?.length) {
+              await supabase.from('shelter_photos').update({ analysis: { items: analysis.items } }).eq('id', newRow.id);
+              setPhotos((prev) => prev.map((p) => (p.id === newRow.id ? { ...p, analysis: { items: analysis.items } } : p)));
+            }
+          }
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Upload failed');
       } finally {

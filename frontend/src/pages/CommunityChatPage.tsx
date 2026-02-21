@@ -23,13 +23,25 @@ export function CommunityChatPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase.from('chat_rooms').select('*').eq('type', 'topic').order('name').then(({ data }) => {
-      const list = (data ?? []) as ChatRoom[];
-      setRooms(list.length > 0 ? list : getSeedChatRooms());
-      if (list.length > 0 && !selectedRoomId) setSelectedRoomId(list[0].id);
-      else if (list.length === 0) setSelectedRoomId(getSeedChatRooms()[0].id);
-      setLoading(false);
-    });
+    let mounted = true;
+    (async () => {
+      try {
+        const { data } = await supabase.from('chat_rooms').select('*').eq('type', 'topic').order('name');
+        if (!mounted) return;
+        const list = (data ?? []) as ChatRoom[];
+        setRooms(list.length > 0 ? list : getSeedChatRooms());
+        if (list.length > 0 && !selectedRoomId) setSelectedRoomId(list[0].id);
+        else if (list.length === 0) setSelectedRoomId(getSeedChatRooms()[0].id);
+      } catch {
+        if (mounted) {
+          setRooms(getSeedChatRooms());
+          setSelectedRoomId(getSeedChatRooms()[0].id);
+        }
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+    return () => { mounted = false; };
   }, []);
 
   useEffect(() => {

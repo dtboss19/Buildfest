@@ -1,15 +1,10 @@
-import React, { useRef } from 'react';
+import React from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { Navbar } from './Navbar';
 import { hasSupabaseConfig } from '../lib/supabase';
 
 export function Layout() {
   const location = useLocation();
-  const renderCount = useRef(0);
-  renderCount.current += 1;
-  // #region agent log
-  fetch('http://127.0.0.1:7245/ingest/71b4a864-7d3e-4999-93a3-797a1b84b4b0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Layout.tsx:render',message:'Layout render',data:{count:renderCount.current,path:location.pathname,ts:Date.now()},timestamp:Date.now(),hypothesisId:'H3'})}).catch(()=>{});
-  // #endregion
   return (
     <div className="app">
       {!hasSupabaseConfig && (

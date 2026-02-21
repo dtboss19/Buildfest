@@ -83,10 +83,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let mounted = true;
 
     const init = async () => {
-      const t0 = Date.now();
-      // #region agent log
-      fetch('http://127.0.0.1:7245/ingest/71b4a864-7d3e-4999-93a3-797a1b84b4b0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AuthContext.tsx:init-start',message:'auth init start',data:{t0},timestamp:t0,hypothesisId:'H1'})}).catch(()=>{});
-      // #endregion
       let session;
       try {
         const result = await supabase.auth.getSession();
@@ -96,9 +92,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return;
         }
         session = result.data?.session;
-        // #region agent log
-        fetch('http://127.0.0.1:7245/ingest/71b4a864-7d3e-4999-93a3-797a1b84b4b0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AuthContext.tsx:getSession-done',message:'getSession done',data:{ms:Date.now()-t0},timestamp:Date.now(),hypothesisId:'H2'})}).catch(()=>{});
-        // #endregion
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         const lockTimeout = msg.includes('LockManager') || msg.includes('auth-token') || msg.includes('timed out');
@@ -108,20 +101,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!mounted) return;
       if (!session?.user) {
         setState({ user: null, profile: null, loading: false, error: null });
-        // #region agent log
-        fetch('http://127.0.0.1:7245/ingest/71b4a864-7d3e-4999-93a3-797a1b84b4b0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AuthContext.tsx:init-done',message:'auth init done (no session)',data:{ms:Date.now()-t0},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{});
-        // #endregion
         return;
       }
       const profile = await ensureProfileExists(session.user);
-      // #region agent log
-      fetch('http://127.0.0.1:7245/ingest/71b4a864-7d3e-4999-93a3-797a1b84b4b0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AuthContext.tsx:ensureProfile-done',message:'ensureProfileExists done',data:{ms:Date.now()-t0},timestamp:Date.now(),hypothesisId:'H2'})}).catch(()=>{});
-      // #endregion
       if (!mounted) return;
       setState({ user: session.user, profile, loading: false, error: null });
-      // #region agent log
-      fetch('http://127.0.0.1:7245/ingest/71b4a864-7d3e-4999-93a3-797a1b84b4b0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AuthContext.tsx:init-done',message:'auth init done (with session)',data:{totalMs:Date.now()-t0},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{});
-      // #endregion
     };
 
     init();
