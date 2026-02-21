@@ -22,6 +22,15 @@ export function ShelterPage() {
     if (hash === 'photos' || hash === 'community' || hash === 'chat') setActiveTab(hash);
   }, [id]);
 
+  useEffect(() => {
+    const onHashChange = () => {
+      const hash = window.location.hash.slice(1);
+      if (hash === 'info' || hash === 'photos' || hash === 'community' || hash === 'chat') setActiveTab(hash);
+    };
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+  }, []);
+
   if (!id) return <div className="page-error">Missing shelter ID</div>;
   if (!shelter) return <div className="page-error">Shelter not found</div>;
 
@@ -44,7 +53,10 @@ export function ShelterPage() {
             key={tab.id}
             type="button"
             className={`shelter-tab ${activeTab === tab.id ? 'active' : ''}`}
-            onClick={() => setActiveTab(tab.id)}
+            onClick={() => {
+              setActiveTab(tab.id);
+              window.history.replaceState(null, '', `#${tab.id}`);
+            }}
           >
             {tab.label}
           </button>

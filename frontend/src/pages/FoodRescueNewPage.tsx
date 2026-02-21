@@ -23,7 +23,7 @@ export function FoodRescueNewPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = () => withAuth(async () => {
+  const handleSubmit = withAuth(async () => {
     if (!user || !eventName.trim() || !expiryTime) return;
     setLoading(true);
     setError(null);
@@ -52,8 +52,9 @@ export function FoodRescueNewPage() {
       });
       if (insertErr) throw insertErr;
       navigate('/food-rescue');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create post');
+    } catch (err: unknown) {
+      const msg = err && typeof err === 'object' && 'message' in err ? String((err as { message: unknown }).message) : null;
+      setError(msg || 'Failed to create post');
     } finally {
       setLoading(false);
     }
@@ -73,7 +74,7 @@ export function FoodRescueNewPage() {
     <div className="food-rescue-new-page">
       <h1>Create food rescue post</h1>
       {error && <p className="error">{error}</p>}
-      <form onSubmit={(e) => { e.preventDefault(); handleSubmit()(); }} className="rescue-form">
+      <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="rescue-form">
         <label>Event name <input type="text" value={eventName} onChange={(e) => setEventName(e.target.value)} required /></label>
         <label>Description <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} /></label>
         <label>Quantity <input type="text" value={quantity} onChange={(e) => setQuantity(e.target.value)} placeholder="e.g. 20 trays" /></label>

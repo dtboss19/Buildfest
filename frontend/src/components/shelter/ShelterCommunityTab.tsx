@@ -123,7 +123,7 @@ export function ShelterCommunityTab({ shelterId }: ShelterCommunityTabProps) {
                   <div className="comment-form">
                     <AnonymousToggle checked={commentAnonymous[p.id] ?? false} onChange={(v) => setCommentAnonymous((prev) => ({ ...prev, [p.id]: v }))} />
                     <textarea placeholder="Add a comment" value={commentContent[p.id] ?? ''} onChange={(e) => setCommentContent((prev) => ({ ...prev, [p.id]: e.target.value }))} rows={2} />
-                    <button type="button" className="btn btn-primary" onClick={handleSubmitComment(p.id)}>Comment</button>
+                    <button type="button" className="btn btn-primary" onClick={() => handleSubmitComment(p.id)()()}>Comment</button>
                   </div>
                 ) : (
                   <button type="button" className="link-button" onClick={openSignIn}>Sign in to comment</button>

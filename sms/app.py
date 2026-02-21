@@ -40,6 +40,10 @@ def init_db():
         )
 
 
+# Run at import so DB exists when using Gunicorn/uWSGI (where __main__ is not executed).
+init_db()
+
+
 def normalize_phone(raw: str) -> str | None:
     digits = re.sub(r"\D", "", raw)
     if len(digits) == 10:
@@ -204,9 +208,9 @@ def _parse_data_url(data_url: str) -> tuple[str, str] | None:
         header, _, b64 = data_url.partition(",")
         # header is like "data:image/png;base64" or "data:image/jpeg"
         if ";base64" in header:
-            mt = header.split(";")[0].replace("data:", "").strip()
+            mt = header.split(";")[0][5:].strip()  # skip "data:" prefix safely
         else:
-            mt = header.replace("data:", "").strip() or "image/jpeg"
+            mt = (header[5:].strip() if len(header) > 5 else "") or "image/jpeg"
         if not b64 or not mt.startswith("image/"):
             return None
         return (mt, b64.strip())
@@ -300,7 +304,8 @@ def start_scheduler():
 
 
 if __name__ == "__main__":
-    init_db()
+    # Scheduler runs only in development (single process). In production use cron to call
+    # GET /api/send-daily?key=CRON_SECRET so multiple workers do not send duplicate SMS.
     start_scheduler()
     port = int(os.getenv("PORT", "5000"))
     app.run(host="0.0.0.0", port=port, debug=os.getenv("FLASK_DEBUG", "false").lower() == "true")

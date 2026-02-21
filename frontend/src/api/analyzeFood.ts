@@ -19,7 +19,7 @@ export async function analyzeFoodImage(dataUrl: string): Promise<FoodDetection |
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ image: dataUrl }),
     });
-    const data = await res.json().catch(() => ({}));
+    const data = await res.json();
     if (!res.ok || !data) return null;
     const rawItems = Array.isArray(data.items) ? data.items : (data as { items?: unknown[] }).items;
     const items = Array.isArray(rawItems)

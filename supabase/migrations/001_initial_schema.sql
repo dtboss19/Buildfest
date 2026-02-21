@@ -150,9 +150,8 @@ CREATE INDEX idx_notifications_user_unread ON public.notifications(user_id) WHER
 ALTER PUBLICATION supabase_realtime ADD TABLE public.chat_messages;
 
 -- ============ STORAGE ============
--- Create buckets in Dashboard: avatars, shelter-photos, food-rescue-photos (all public).
--- Then add policies in Dashboard or run after buckets exist:
--- Storage policies: allow authenticated upload, public read (run after buckets exist).
+-- Create buckets in Dashboard (Storage): avatars, shelter-photos, food-rescue-photos (all public).
+-- Without these, image uploads in the app will fail. Add policies for authenticated upload, public read.
 
 -- ============ RLS ============
 ALTER TABLE public.user_profiles ENABLE ROW LEVEL SECURITY;
@@ -222,7 +221,14 @@ CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
   INSERT INTO public.user_profiles (user_id, display_name)
-  VALUES (NEW.id, COALESCE(NULLIF(TRIM(NEW.raw_user_meta_data->>'display_name'), ''), split_part(NEW.email, '@', 1), 'User'));
+  VALUES (
+    NEW.id,
+    COALESCE(
+      NULLIF(TRIM(NEW.raw_user_meta_data->>'display_name'), ''),
+      NULLIF(TRIM(split_part(COALESCE(NEW.email, ''), '@', 1)), ''),
+      'User'
+    )
+  );
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
