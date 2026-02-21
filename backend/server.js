@@ -90,7 +90,15 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 const app = express();
-app.use(cors({ origin: true }));
+// CORS enabled so frontend (e.g. Vercel) can call API/SMS subscribe from browser
+const corsOptions = {
+  origin: process.env.ALLOWED_ORIGINS
+    ? process.env.ALLOWED_ORIGINS.split(',').map((s) => s.trim())
+    : true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+};
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use('/uploads', express.static(uploadDir));
 
