@@ -6,6 +6,7 @@ import { fileURLToPath } from 'url';
 import multer from 'multer';
 import { randomUUID } from 'crypto';
 import twilio from 'twilio';
+import cron from 'node-cron';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const dbPath = path.join(__dirname, 'data.db');
@@ -14,7 +15,10 @@ const db = new Database(dbPath);
 db.exec(`
   CREATE TABLE IF NOT EXISTS sms_subscribers (
     phone TEXT PRIMARY KEY,
-    created_at TEXT DEFAULT (datetime('now'))
+    created_at TEXT DEFAULT (datetime('now')),
+    daily_digest INTEGER DEFAULT 1,
+    surplus_drops INTEGER DEFAULT 0,
+    surplus_posts INTEGER DEFAULT 0
   );
   CREATE TABLE IF NOT EXISTS food_rescue_posts (
     id TEXT PRIMARY KEY,
@@ -46,6 +50,15 @@ db.exec(`
     FOREIGN KEY (room_id) REFERENCES chat_rooms(id)
   );
 `);
+
+// Migrate existing sms_subscribers to have preference columns (no-op if already present)
+['daily_digest INTEGER DEFAULT 1', 'surplus_drops INTEGER DEFAULT 0', 'surplus_posts INTEGER DEFAULT 0'].forEach((col) => {
+  try {
+    db.exec(`ALTER TABLE sms_subscribers ADD COLUMN ${col}`);
+  } catch (e) {
+    if (!/duplicate column name/i.test(e.message)) throw e;
+  }
+});
 
 const seedRooms = db.prepare('SELECT id FROM chat_rooms LIMIT 1').get();
 if (!seedRooms) {
@@ -260,7 +273,7 @@ function sendSms(to, body) {
 function runDailySend(dayArg) {
   const day = dayArg != null ? dayArg : new Date().getDay();
   const body = buildDailyMessage(day);
-  const rows = db.prepare('SELECT phone FROM sms_subscribers').all();
+  const rows = db.prepare('SELECT phone FROM sms_subscribers WHERE COALESCE(daily_digest, 1) = 1').all();
   let sent = 0;
   for (const row of rows) {
     if (sendSms(row.phone, body)) sent++;
@@ -274,9 +287,16 @@ app.post('/api/subscribe', (req, res) => {
     if (!phone) {
       return res.status(400).json({ ok: false, error: 'Invalid phone number' });
     }
-    db.prepare('INSERT OR REPLACE INTO sms_subscribers (phone) VALUES (?)').run(phone);
+    const dailyDigest = req.body?.daily_digest !== false;
+    const surplusDrops = Boolean(req.body?.surplus_drops);
+    const surplusPosts = Boolean(req.body?.surplus_posts);
+    const insert = db.prepare(
+      `INSERT INTO sms_subscribers (phone, daily_digest, surplus_drops, surplus_posts) VALUES (?, ?, ?, ?)
+       ON CONFLICT(phone) DO UPDATE SET daily_digest=excluded.daily_digest, surplus_drops=excluded.surplus_drops, surplus_posts=excluded.surplus_posts`
+    );
+    insert.run(phone, dailyDigest ? 1 : 0, surplusDrops ? 1 : 0, surplusPosts ? 1 : 0);
     const welcome =
-      "You're signed up for Common Table alerts. We'll text you which locations are open and closest to campus. Reply STOP to unsubscribe.";
+      "You're signed up for Common Table alerts. We'll text you based on your preferences. Reply STOP to unsubscribe.";
     if (sendSms(phone, welcome)) {
       return res.json({ ok: true, message: 'Subscribed. Check your phone for confirmation.' });
     }
@@ -329,4 +349,25 @@ app.get('/api/sms/health', (_req, res) => {
 });
 
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => console.log(`API running at http://localhost:${PORT}`));
+app.listen(PORT, () => {
+  console.log(`API running at http://localhost:${PORT}`);
+
+  // Daily SMS at 8:00 AM (configurable: SCHEDULE_HOUR, SCHEDULE_MINUTE, SCHEDULE_TZ)
+  const scheduleHour = parseInt(process.env.SCHEDULE_HOUR ?? '8', 10);
+  const scheduleMinute = parseInt(process.env.SCHEDULE_MINUTE ?? '0', 10);
+  const scheduleTz = process.env.SCHEDULE_TZ ?? 'America/Chicago';
+  const cronExpr = `${scheduleMinute} ${scheduleHour} * * *`;
+  cron.schedule(
+    cronExpr,
+    () => {
+      try {
+        const { subscribers, sent } = runDailySend();
+        console.log(`Daily SMS: ${sent}/${subscribers} sent (${scheduleTz} ${scheduleHour}:${String(scheduleMinute).padStart(2, '0')})`);
+      } catch (e) {
+        console.error('Daily SMS error:', e.message);
+      }
+    },
+    { timezone: scheduleTz }
+  );
+  console.log(`Daily SMS scheduled at ${scheduleHour}:${String(scheduleMinute).padStart(2, '0')} ${scheduleTz}`);
+});
