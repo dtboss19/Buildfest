@@ -15,6 +15,15 @@ import './HomePage.css';
 
 const SHELTER_FINDER_ID = 'shelter-finder';
 
+type DietaryFilter = 'all' | 'vegetarian' | 'halal' | 'kosher' | 'gluten-free' | 'no-requirements';
+
+function shelterMatchesDietary(shelter: FoodShelter, filter: DietaryFilter): boolean {
+  const opts = shelter.dietary_options ?? ['no-requirements'];
+  if (filter === 'all') return true;
+  if (filter === 'no-requirements') return opts.length === 0 || opts.includes('no-requirements');
+  return opts.includes(filter);
+}
+
 function getOpenNowCount(
   sheltersForDay: { shelter: FoodShelter; daySchedule: { slots: { open: string; close: string }[] } | undefined }[],
   currentDay: DayOfWeek,
@@ -61,23 +70,55 @@ function formatCountdown(expiryTime: string): string {
   return `${mins}m left`;
 }
 
+/** Nearest shelter open right now, or nearest opening today with time */
+function getEmergencyShelterInfo(
+  nowMinutes: number,
+  today: DayOfWeek
+): { type: 'open_now'; shelter: FoodShelter } | { type: 'opens_today'; shelter: FoodShelter; time: string } | null {
+  const openNow = foodShelters
+    .map((s) => ({ shelter: s, daySchedule: s.schedule.find((e) => e.day === today) }))
+    .filter((x) => x.daySchedule && isOpenAtTime(x.daySchedule.slots, nowMinutes))
+    .sort((a, b) => a.shelter.distanceMiles - b.shelter.distanceMiles);
+  if (openNow.length > 0) return { type: 'open_now', shelter: openNow[0].shelter };
+  const opensToday = foodShelters
+    .map((s) => {
+      const entry = s.schedule.find((e) => e.day === today);
+      const first = entry ? getFirstOpenTime(entry.slots) : null;
+      return first ? { shelter: s, time: formatTime(first) } : null;
+    })
+    .filter((x): x is { shelter: FoodShelter; time: string } => x != null)
+    .sort((a, b) => a.shelter.distanceMiles - b.shelter.distanceMiles);
+  if (opensToday.length > 0) return { type: 'opens_today', shelter: opensToday[0].shelter, time: opensToday[0].time };
+  return null;
+}
+
 export function HomePage() {
   const navigate = useNavigate();
   const [selectedDay, setSelectedDay] = useState<DayOfWeek>(() => new Date().getDay() as DayOfWeek);
+  const [emergencyModalOpen, setEmergencyModalOpen] = useState(false);
+  const [dietaryFilter, setDietaryFilter] = useState<DietaryFilter>('all');
+  const today = new Date().getDay() as DayOfWeek;
+  const now = new Date();
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+  const emergencyShelter = useMemo(() => getEmergencyShelterInfo(nowMinutes, today), [nowMinutes, today]);
+  const emergencyRescues = useMemo(
+    () => getSeedFoodRescuePosts().filter((r) => r.status === 'available' && (r.pickup_type === 'community' || r.pickup_type === 'both')),
+    []
+  );
 
   const sheltersForDay = useMemo(
     () =>
-      foodShelters.map((shelter) => ({
-        shelter,
-        daySchedule: shelter.schedule.find((e) => e.day === selectedDay),
-      })),
-    [selectedDay]
+      foodShelters
+        .filter((s) => shelterMatchesDietary(s, dietaryFilter))
+        .map((shelter) => ({
+          shelter,
+          daySchedule: shelter.schedule.find((e) => e.day === selectedDay),
+        })),
+    [selectedDay, dietaryFilter]
   );
 
   const sheltersWithPins = useMemo(() => sheltersForDay.map((x) => x.shelter), [sheltersForDay]);
 
-  const now = new Date();
-  const nowMinutes = now.getHours() * 60 + now.getMinutes();
   const openNowCount = useMemo(
     () => getOpenNowCount(sheltersForDay, selectedDay, nowMinutes),
     [sheltersForDay, selectedDay, nowMinutes]
@@ -97,13 +138,30 @@ export function HomePage() {
   };
 
   const seedRescues = getSeedFoodRescuePosts().filter((r) => r.status === 'available').slice(0, 3);
+  const openRightNowShelters = useMemo(() => {
+    if (selectedDay !== today) return [];
+    return foodShelters
+      .filter((s) => shelterMatchesDietary(s, dietaryFilter))
+      .map((s) => ({ shelter: s, daySchedule: s.schedule.find((e) => e.day === today) }))
+      .filter((x) => x.daySchedule && isOpenAtTime(x.daySchedule.slots, nowMinutes))
+      .sort((a, b) => a.shelter.distanceMiles - b.shelter.distanceMiles)
+      .slice(0, 3);
+  }, [selectedDay, today, nowMinutes, dietaryFilter]);
   const seedQuotes = [
     ...getSeedChatMessages('General Discussion').slice(0, 2),
     getSeedChatMessages('Recipes with Food Shelf Items')[0],
   ].filter(Boolean);
 
+  const recipeOfTheWeek = {
+    title: 'Simple Rice & Bean Bowl',
+    prep: '~20 min',
+    ingredients: 'Rice, canned beans, canned tomatoes, onion, garlic, salt, pepper, oil',
+    steps: '1. Cook rice. 2. Sauté onion and garlic in oil. 3. Add canned tomatoes and beans, simmer 10 min. 4. Season with salt and pepper. 5. Serve over rice.',
+  };
+  const [recipeWeekExpanded, setRecipeWeekExpanded] = useState(false);
+
   useEffect(() => {
-    const sections = document.querySelectorAll('.home-hero, .home-stats, .home-how, .home-finder, .home-sms, .home-rescue-preview, .home-community-preview');
+    const sections = document.querySelectorAll('.home-hero, .home-how, .home-finder, .home-sms, .home-rescue-preview, .home-community-preview');
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -136,32 +194,92 @@ export function HomePage() {
               Get text alerts
             </button>
           </div>
+          <p className="home-hero-ticker" role="status">
+            🟢 {openNowCount} shelter{openNowCount !== 1 ? 's' : ''} open today near you
+          </p>
+          <div className="home-hero-ask">
+            <label htmlFor="home-ask-input" className="home-hero-ask-label">Ask me:</label>
+            <input
+              id="home-ask-input"
+              type="text"
+              className="home-hero-ask-input"
+              placeholder="Where can I get halal food today? or What's open Sunday?"
+              onFocus={() => window.dispatchEvent(new CustomEvent('open-ai-chat'))}
+              onClick={() => window.dispatchEvent(new CustomEvent('open-ai-chat'))}
+              readOnly
+              aria-label="Ask Common Table a question (opens chat)"
+            />
+          </div>
+          <p className="home-hero-need-help">
+            Need food right now?{' '}
+            <button type="button" className="home-hero-need-help-btn" onClick={() => setEmergencyModalOpen(true)}>
+              Get help →
+            </button>
+          </p>
         </div>
       </section>
 
-      {/* Section 2: Impact Stats */}
-      <section className="home-stats">
-        <div className="home-stats-inner">
-          <div className="home-stat">
-            <span className="home-stat-icon">🏪</span>
-            <span className="home-stat-text">15+ Food shelves nearby</span>
-          </div>
-          <div className="home-stat">
-            <span className="home-stat-icon">👥</span>
-            <span className="home-stat-text">902 people served last year</span>
-          </div>
-          <div className="home-stat">
-            <span className="home-stat-icon">📅</span>
-            <span className="home-stat-text">Food available every day of the week</span>
-          </div>
-          <div className="home-stat">
-            <span className="home-stat-icon">🌎</span>
-            <span className="home-stat-text">Twin Cities & beyond</span>
+      {/* Emergency help modal */}
+      {emergencyModalOpen && (
+        <div className="home-emergency-backdrop" onClick={() => setEmergencyModalOpen(false)} role="dialog" aria-modal="true" aria-labelledby="emergency-modal-title">
+          <div className="home-emergency-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="home-emergency-header">
+              <h2 id="emergency-modal-title">Here to help</h2>
+              <button type="button" className="home-emergency-close" onClick={() => setEmergencyModalOpen(false)} aria-label="Close">×</button>
+            </div>
+            <div className="home-emergency-body">
+              {emergencyShelter?.type === 'open_now' && (
+                <div className="home-emergency-block">
+                  <p className="home-emergency-label">Nearest place open right now</p>
+                  <p className="home-emergency-name">{emergencyShelter.shelter.name}</p>
+                  <p className="home-emergency-address">{emergencyShelter.shelter.address}, {emergencyShelter.shelter.city}, {emergencyShelter.shelter.state} {emergencyShelter.shelter.zip}</p>
+                  {emergencyShelter.shelter.contact && (
+                    <p className="home-emergency-phone"><a href={`tel:${emergencyShelter.shelter.contact.replace(/\D/g, '')}`}>{emergencyShelter.shelter.contact}</a></p>
+                  )}
+                  <p className="home-emergency-miles">{emergencyShelter.shelter.distanceMiles} miles from campus</p>
+                  <Link to={`/shelter/${emergencyShelter.shelter.id}`} className="home-btn home-btn-primary" onClick={() => setEmergencyModalOpen(false)}>See hours & directions</Link>
+                </div>
+              )}
+              {emergencyShelter?.type === 'opens_today' && (
+                <div className="home-emergency-block">
+                  <p className="home-emergency-label">Nearest place opening today</p>
+                  <p className="home-emergency-name">{emergencyShelter.shelter.name}</p>
+                  <p className="home-emergency-time">Opens at {emergencyShelter.time}</p>
+                  <p className="home-emergency-address">{emergencyShelter.shelter.address}, {emergencyShelter.shelter.city}, {emergencyShelter.shelter.state} {emergencyShelter.shelter.zip}</p>
+                  {emergencyShelter.shelter.contact && (
+                    <p className="home-emergency-phone"><a href={`tel:${emergencyShelter.shelter.contact.replace(/\D/g, '')}`}>{emergencyShelter.shelter.contact}</a></p>
+                  )}
+                  <Link to={`/shelter/${emergencyShelter.shelter.id}`} className="home-btn home-btn-primary" onClick={() => setEmergencyModalOpen(false)}>See details</Link>
+                </div>
+              )}
+              {!emergencyShelter && (
+                <div className="home-emergency-block">
+                  <p className="home-emergency-label">No food shelves open right now</p>
+                  <p className="home-emergency-helpline">Call the Minnesota Food Helpline for immediate guidance:</p>
+                  <p className="home-emergency-phone home-emergency-helpline-number"><a href="tel:1-888-711-1151">1-888-711-1151</a></p>
+                  <p className="home-emergency-hours">Mon–Fri, 10am–5pm</p>
+                </div>
+              )}
+              {emergencyRescues.length > 0 && (
+                <div className="home-emergency-block home-emergency-rescues">
+                  <p className="home-emergency-label">Surplus food you can claim now</p>
+                  <ul className="home-emergency-rescue-list">
+                    {emergencyRescues.slice(0, 3).map((r) => (
+                      <li key={r.id}>
+                        <Link to="/food-rescue" onClick={() => setEmergencyModalOpen(false)}>{r.event_name}</Link>
+                        <span className="home-emergency-rescue-countdown">{formatCountdown(r.expiry_time)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <Link to="/food-rescue" className="home-btn home-btn-secondary" onClick={() => setEmergencyModalOpen(false)}>View all</Link>
+                </div>
+              )}
+            </div>
           </div>
         </div>
-      </section>
+      )}
 
-      {/* Section 3: How It Works */}
+      {/* How It Works */}
       <section className="home-how">
         <div className="home-how-inner home-how-four">
           <div className="home-how-col">
@@ -195,12 +313,43 @@ export function HomePage() {
         </div>
       </section>
 
+      {/* Open right now (only when shelters currently open) */}
+      {openRightNowShelters.length > 0 && (
+        <section className="home-open-now-section">
+          <div className="home-open-now-inner">
+            <h2 className="home-section-title">Open right now</h2>
+            <p className="home-section-subtitle">These places are open at this moment</p>
+            <div className="home-open-now-cards">
+              {openRightNowShelters.map(({ shelter, daySchedule }) => (
+                <Link key={shelter.id} to={`/shelter/${shelter.id}`} className="home-open-now-card">
+                  <span className="home-open-now-dot" aria-hidden>🟢</span>
+                  <span className="home-open-now-name">{shelter.name}</span>
+                  <span className="home-open-now-miles">{shelter.distanceMiles} mi</span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Section 4: Shelter Finder */}
       <section id={SHELTER_FINDER_ID} className="home-finder">
         <div className="home-finder-inner">
           <h2 className="home-section-title">Find food near you</h2>
           <p className="home-section-subtitle">Open today and this week near St. Paul & Minneapolis</p>
 
+          <div className="home-finder-dietary">
+            {(['all', 'vegetarian', 'halal', 'kosher', 'gluten-free', 'no-requirements'] as const).map((f) => (
+              <button
+                key={f}
+                type="button"
+                className={`home-dietary-pill ${dietaryFilter === f ? 'active' : ''}`}
+                onClick={() => setDietaryFilter(f)}
+              >
+                {f === 'all' ? 'All' : f === 'no-requirements' ? 'No Requirements' : f === 'gluten-free' ? 'Gluten-Free' : f === 'halal' ? 'Halal' : f === 'kosher' ? 'Kosher' : 'Vegetarian'}
+              </button>
+            ))}
+          </div>
           <div className="home-finder-two-col">
             <div className="home-finder-left">
               <div className="home-finder-week">
@@ -255,24 +404,51 @@ export function HomePage() {
         <div className="home-rescue-inner">
           <h2 className="home-section-title">Surplus food available now</h2>
           <div className="home-rescue-scroll">
-            {seedRescues.map((r) => (
-              <div key={r.id} className="home-rescue-card">
-                <div className="home-rescue-card-img">
-                  {r.photo_url ? (
-                    <img src={r.photo_url} alt="" />
-                  ) : (
-                    <div className="home-rescue-card-placeholder">🍽️</div>
-                  )}
-                </div>
-                <div className="home-rescue-card-body">
-                  <h3 className="home-rescue-card-title">{r.event_name}</h3>
-                  <p className="home-rescue-card-countdown">{formatCountdown(r.expiry_time)}</p>
-                  <Link to="/food-rescue" className="home-rescue-card-claim">View</Link>
-                </div>
-              </div>
-            ))}
+            {seedRescues.map((r) => {
+              const diff = new Date(r.expiry_time).getTime() - Date.now();
+              const underTwoHours = diff > 0 && diff < 2 * 60 * 60 * 1000;
+              const underOneHour = diff > 0 && diff < 60 * 60 * 1000;
+              return (
+                <Link key={r.id} to="/food-rescue" className="home-rescue-card home-rescue-card-clickable">
+                  {underTwoHours && <span className="home-rescue-badge">🔥 Expires soon</span>}
+                  <div className="home-rescue-card-img">
+                    {r.photo_url ? (
+                      <img src={r.photo_url} alt="" />
+                    ) : (
+                      <div className="home-rescue-card-placeholder">🍽️</div>
+                    )}
+                  </div>
+                  <div className="home-rescue-card-body">
+                    <h3 className="home-rescue-card-title">{r.event_name}</h3>
+                    <p className={`home-rescue-card-countdown ${underOneHour ? 'home-rescue-countdown-pulse' : ''}`}>{formatCountdown(r.expiry_time)}</p>
+                    <span className="home-rescue-card-claim">View</span>
+                  </div>
+                </Link>
+              );
+            })}
           </div>
           <Link to="/food-rescue" className="home-see-all">See all →</Link>
+        </div>
+      </section>
+
+      {/* Recipe of the week */}
+      <section className="home-recipe-week">
+        <div className="home-recipe-week-inner">
+          <h2 className="home-recipe-week-title">🍳 Recipe of the week</h2>
+          <p className="home-recipe-week-sub">Made with common food shelf items</p>
+          <div className="home-recipe-week-card">
+            <h3 className="home-recipe-week-name">{recipeOfTheWeek.title}</h3>
+            <p className="home-recipe-week-prep">⏱ {recipeOfTheWeek.prep}</p>
+            <button type="button" className="home-recipe-week-toggle" onClick={() => setRecipeWeekExpanded((e) => !e)}>
+              {recipeWeekExpanded ? 'Collapse' : 'See full recipe'}
+            </button>
+            {recipeWeekExpanded && (
+              <div className="home-recipe-week-full">
+                <p className="home-recipe-week-ingredients"><strong>Ingredients:</strong> {recipeOfTheWeek.ingredients}</p>
+                <p className="home-recipe-week-steps"><strong>Steps:</strong> {recipeOfTheWeek.steps}</p>
+              </div>
+            )}
+          </div>
         </div>
       </section>
 
@@ -300,6 +476,7 @@ export function HomePage() {
             <Link to="/food-rescue">Food Rescue</Link>
             <Link to="/community">Community</Link>
             <Link to="/community/chat">Chat</Link>
+            <Link to="/about">About</Link>
           </nav>
           <p className="home-footer-contact">Questions? Contact tommieshelf@stthomas.edu</p>
           <p className="home-footer-built">Built at Tommie Buildfest 2026 💜</p>

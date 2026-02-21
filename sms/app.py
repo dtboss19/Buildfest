@@ -320,6 +320,97 @@ def analyze_food():
     return jsonify({"ok": True, "items": result.get("items", [])})
 
 
+def build_assistant_context() -> str:
+    """Build current date, day, open-today list, and full shelter summary for the AI assistant."""
+    from datetime import datetime
+    now = datetime.now()
+    day = now.weekday()  # Python: Mon=0 .. Sun=6
+    # Convert to Sun=0 for our data: (day + 1) % 7
+    day_sun_first = (day + 1) % 7
+    day_names = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+    day_name = day_names[day_sun_first]
+    date_str = now.strftime("%A, %B %d, %Y")
+    try:
+        shelters = load_shelters()
+    except Exception:
+        return f"Today is {date_str} ({day_name}). Shelter data temporarily unavailable."
+    open_today_list = open_today(shelters, day_sun_first)
+    lines = [
+        f"Today is {date_str} ({day_name}).",
+        f"Number of food shelves open today: {len(open_today_list)}.",
+        "",
+        "=== SHELTERS OPEN TODAY (with hours) ===",
+    ]
+    for s in open_today_list:
+        entry = next((e for e in s["schedule"] if e["day"] == day_sun_first), None)
+        hours = _format_slots(entry.get("slots", [])) if entry else ""
+        note = f" ({entry['note']})" if entry and entry.get("note") else ""
+        lines.append(f"- {s['name']}: {s.get('address', '')} — {s['distanceMiles']} mi from campus. Hours today: {hours}{note}. Eligibility: {s.get('eligibility', '')}. Contact: {s.get('contact', 'N/A')}.")
+    lines.append("")
+    lines.append("=== ALL FOOD SHELTERS (for other days) ===")
+    for s in shelters:
+        days_open = []
+        for e in s.get("schedule", []):
+            d = e.get("day", 0)
+            if 0 <= d <= 6:
+                days_open.append(day_names[d])
+        days_str = ", ".join(days_open) if days_open else "Call for hours"
+        lines.append(f"- {s['name']}: {s.get('address', '')} — {s['distanceMiles']} mi. Open: {days_str}. Eligibility: {s.get('eligibility', '')}. Contact: {s.get('contact', 'N/A')}.")
+    return "\n".join(lines)
+
+
+ASSISTANT_SYSTEM = """You are the friendly assistant for Common Table, an app that connects people with food shelves and free food resources near the University of St. Thomas in St. Paul, MN. Be warm, practical, and never condescending. Answer in 2–4 short sentences unless the user asks for more detail. Always end with a clear next step (e.g. "Check the calendar on the home page for other days" or "Call them to confirm hours.").
+
+Use ONLY the data below. Do not invent shelter names, addresses, or hours. If asked about a day, use the schedule. If asked about "now" or "today", use "SHELTERS OPEN TODAY". If nothing is open today and they need food, suggest the Minnesota Food Helpline: 1-888-711-1151 (Mon–Fri 10am–5pm).
+
+Current data:
+{context}"""
+
+
+@app.route("/api/ask-assistant", methods=["POST"])
+def ask_assistant():
+    """Body: JSON { \"message\": \"...\" } or { \"message\": \"...\", \"history\": [{\"role\":\"user\"|\"assistant\", \"content\":\"...\"}] }. Returns { \"ok\": true, \"reply\": \"...\" }."""
+    api_key = os.getenv("ANTHROPIC_API_KEY")
+    if not api_key:
+        return jsonify({"ok": False, "error": "Assistant unavailable. Set ANTHROPIC_API_KEY."}), 503
+    data = request.get_json() or {}
+    message = (data.get("message") or "").strip()
+    if not message:
+        return jsonify({"ok": False, "error": "Missing message"}), 400
+    context = build_assistant_context()
+    system = ASSISTANT_SYSTEM.format(context=context)
+    history = data.get("history") or []
+    messages = []
+    for h in history[-10:]:  # keep last 10 turns
+        role = h.get("role")
+        content = (h.get("content") or "").strip()
+        if role in ("user", "assistant") and content:
+            messages.append({"role": role, "content": content})
+    messages.append({"role": "user", "content": message})
+    try:
+        from anthropic import Anthropic
+        client = Anthropic(api_key=api_key)
+        model = os.getenv("ANTHROPIC_MODEL", "claude-3-5-sonnet-20241022")
+        resp = client.messages.create(
+            model=model,
+            max_tokens=500,
+            system=system,
+            messages=messages,
+        )
+        reply = (resp.content[0].text if resp.content else "").strip()
+        return jsonify({"ok": True, "reply": reply or "I couldn't generate a response. Try asking which food shelves are open today."})
+    except Exception as e:
+        err_str = str(e).lower()
+        if "credit" in err_str or "balance" in err_str or "billing" in err_str or "invalid_request" in err_str:
+            reply = (
+                "I'm temporarily unable to use the AI, but here's the latest info we have:\n\n"
+                + context
+                + "\n\nYou can also browse food shelves on the Find Food page, or call the Minnesota Food Helpline: 1-888-711-1151 (Mon–Fri 10am–5pm)."
+            )
+            return jsonify({"ok": True, "reply": reply})
+        return jsonify({"ok": False, "error": "The assistant is temporarily unavailable. Please try again later."}), 503
+
+
 def start_scheduler():
     """Schedule daily SMS at 8:00 AM (timezone from SCHEDULE_TZ, default America/Chicago for St. Paul)."""
     hour = int(os.getenv("SCHEDULE_HOUR", "8"))
@@ -341,5 +432,5 @@ def start_scheduler():
 if __name__ == "__main__":
     init_db()
     start_scheduler()
-    port = int(os.getenv("PORT", "5000"))
+    port = int(os.getenv("PORT", "5001"))
     app.run(host="0.0.0.0", port=port, debug=os.getenv("FLASK_DEBUG", "false").lower() == "true")
