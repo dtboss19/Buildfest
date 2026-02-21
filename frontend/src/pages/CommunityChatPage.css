@@ -39,5 +39,6 @@
 .chat-msg { margin-bottom: 0.75rem; }
 .chat-msg-name { font-weight: 600; margin-right: 0.5rem; }
 .chat-msg-time { font-size: 0.8rem; color: var(--textMuted); margin-left: 0.5rem; }
+.chat-send-error { margin: 0 0 0.5rem; width: 100%; font-size: 0.9rem; color: var(--error, #c00); }
 .chat-input-form { padding: 0.75rem; border-top: 1px solid var(--border); display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
 .chat-input-form input { flex: 1; min-width: 150px; padding: 0.5rem 0.75rem; border: 1px solid var(--border); border-radius: var(--radiusSm); }

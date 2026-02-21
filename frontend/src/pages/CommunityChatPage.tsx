@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { useRequireAuth } from '../hooks/useRequireAuth';
 import { AnonymousToggle } from '../components/AnonymousToggle';
 import { formatRelativeTime } from '../utils/formatDate';
 import { getSeedChatRooms, getSeedChatMessagesByRoomId, SEED_CHAT_ROOM_IDS } from '../data/seedData';
@@ -14,13 +13,14 @@ const PREVIEW_MESSAGE_COUNT = 3;
 
 export function CommunityChatPage() {
   const { user } = useAuth();
-  const { withAuth } = useRequireAuth();
   const [rooms, setRooms] = useState<ChatRoom[]>([]);
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [content, setContent] = useState('');
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [sendError, setSendError] = useState<string | null>(null);
+  const [sending, setSending] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -66,12 +66,25 @@ export function CommunityChatPage() {
     return () => { supabase.removeChannel(channel); };
   }, [selectedRoomId]);
 
-  const sendMessage = () => withAuth(async () => {
+  const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSendError(null);
     if (!user || !selectedRoomId || !content.trim()) return;
-    if (selectedRoomId.startsWith('seed-')) return; // seed room, no send
-    await supabase.from('chat_messages').insert({ room_id: selectedRoomId, user_id: user.id, content: content.trim(), is_anonymous: isAnonymous });
+    if (selectedRoomId.startsWith('seed-')) return;
+    setSending(true);
+    const { error } = await supabase.from('chat_messages').insert({
+      room_id: selectedRoomId,
+      user_id: user.id,
+      content: content.trim(),
+      is_anonymous: isAnonymous,
+    });
+    setSending(false);
+    if (error) {
+      setSendError(error.message || 'Failed to send message');
+      return;
+    }
     setContent('');
-  });
+  };
 
   const getPreviewMessages = (roomId: string): ChatMessage[] => {
     const msgs = roomId.startsWith('seed-') ? getSeedChatMessagesByRoomId(roomId) : [];
@@ -131,10 +144,11 @@ export function CommunityChatPage() {
               {selectedRoomId.startsWith('seed-') ? (
                 <div className="chat-signin-bar">Seed demo room — use a real room to send messages.</div>
               ) : (
-                <form className="chat-input-form" onSubmit={(e) => { e.preventDefault(); sendMessage()(); }}>
+                <form className="chat-input-form" onSubmit={handleSendMessage}>
+                  {sendError && <p className="chat-send-error">{sendError}</p>}
                   <AnonymousToggle checked={isAnonymous} onChange={setIsAnonymous} label="Send anonymously" />
-                  <input type="text" placeholder="Type a message…" value={content} onChange={(e) => setContent(e.target.value)} />
-                  <button type="submit" className="btn btn-primary">Send</button>
+                  <input type="text" placeholder="Type a message…" value={content} onChange={(e) => setContent(e.target.value)} disabled={sending} />
+                  <button type="submit" className="btn btn-primary" disabled={sending || !user}>{sending ? 'Sending…' : 'Send'}</button>
                 </form>
               )}
             </>
