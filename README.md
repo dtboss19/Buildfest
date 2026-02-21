@@ -89,6 +89,10 @@ After that, the frontend works with no sign-up or sign-in: shelter pages, photos
 3. **Check "Disable new sign ups"**: In **Authentication** → **Settings** (or **Providers**), if there is an option like "Disable new sign ups" or "Enable sign ups", ensure new sign-ups are allowed (anonymous sign-in uses the signup endpoint).
 4. **Retry**: Hard refresh or try in an incognito window; wait a minute after changing settings.
 
+### "new row violates row-level security policy" when posting or sending chat
+
+The database may need explicit policies for the authenticated role (including anonymous users). In the Supabase SQL Editor, run the contents of `supabase/migrations/003_rls_allow_authenticated_inserts.sql`. Then try again.
+
 ### Supabase timing out or login stuck?
 
 If the app hangs on "Loading…" or "Signing in…" and then shows a timeout, Supabase is not responding in time. Common causes:

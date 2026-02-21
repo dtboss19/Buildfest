@@ -66,7 +66,9 @@ export function FoodRescueNewPage() {
       if (insertErr) throw insertErr;
       navigate('/food-rescue');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create post');
+      const msg = err instanceof Error ? err.message : String(err);
+      const isRls = /row-level security|RLS|violates.*policy/i.test(msg);
+      setError(isRls ? `${msg} Run the SQL in supabase/migrations/003_rls_allow_authenticated_inserts.sql in your Supabase SQL Editor.` : msg);
     } finally {
       setLoading(false);
     }

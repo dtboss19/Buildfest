@@ -25,6 +25,13 @@ export function CommunityChatPage() {
 
   useEffect(() => {
     let mounted = true;
+    const timeout = window.setTimeout(() => {
+      if (mounted) {
+        setRooms(getSeedChatRooms());
+        setSelectedRoomId(getSeedChatRooms()[0].id);
+        setLoading(false);
+      }
+    }, 8000);
     (async () => {
       try {
         const { data } = await supabase.from('chat_rooms').select('*').eq('type', 'topic').order('name', { ascending: true });
@@ -42,7 +49,10 @@ export function CommunityChatPage() {
         if (mounted) setLoading(false);
       }
     })();
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+      window.clearTimeout(timeout);
+    };
   }, []);
 
   useEffect(() => {
