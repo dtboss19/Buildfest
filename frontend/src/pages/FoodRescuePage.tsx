@@ -9,6 +9,13 @@ import './FoodRescuePage.css';
 
 type FilterType = 'all' | 'available' | 'foodbank' | 'community';
 
+function mergeWithSeedPosts(apiPosts: FoodRescuePost[]): FoodRescuePost[] {
+  const seed = getSeedFoodRescuePosts();
+  const seedIds = new Set(seed.map((p) => p.id));
+  const fromApi = apiPosts.filter((p) => !seedIds.has(p.id));
+  return [...seed, ...fromApi];
+}
+
 export function FoodRescuePage() {
   const [posts, setPosts] = useState<FoodRescuePost[]>([]);
   const [loading, setLoading] = useState(true);
@@ -31,10 +38,10 @@ export function FoodRescuePage() {
         try {
           const list = await apiGetFoodRescue();
           clearTimeoutSafe();
-          if (mounted) setPosts(list.length > 0 ? (list as FoodRescuePost[]) : getSeedFoodRescuePosts());
+          if (mounted) setPosts(mergeWithSeedPosts((list as FoodRescuePost[]) ?? []));
         } catch (err) {
           if (mounted) setError(err instanceof Error ? err.message : String(err));
-          if (mounted) setPosts(getSeedFoodRescuePosts());
+          if (mounted) setPosts(mergeWithSeedPosts([]));
         } finally {
           if (mounted) setLoading(false);
         }
@@ -52,9 +59,9 @@ export function FoodRescuePage() {
         const isLockError = raw?.includes('LockManager') || raw?.includes('auth-token') || raw?.includes('timed out');
         setError(isLockError ? null : raw);
         const list = (data ?? []) as FoodRescuePost[];
-        setPosts(list.length > 0 ? list : getSeedFoodRescuePosts());
+        setPosts(mergeWithSeedPosts(list));
       } catch {
-        if (mounted) setPosts(getSeedFoodRescuePosts());
+        if (mounted) setPosts(mergeWithSeedPosts([]));
       } finally {
         if (mounted) setLoading(false);
       }
