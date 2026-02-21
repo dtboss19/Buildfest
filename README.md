@@ -93,6 +93,8 @@ Output is in `frontend/dist/`. Serve with any static host.
    - Optional: `VITE_SMS_API_URL` — full URL of your deployed SMS service if you use SMS/AI.
 5. Deploy. The app will be built with `npm run build` and served with SPA rewrites (see `frontend/vercel.json`).
 
+**If you see 405 or "Unexpected token '<'" when creating a post or using chat:** the frontend is calling the wrong host. Add `VITE_API_URL` in Vercel (e.g. `https://buildfest-production-c655.up.railway.app`), then trigger a new deploy so the build embeds the correct API URL.
+
 The optional SMS/AI Python service in `sms/` must be hosted separately (e.g. Railway, Render) and its URL set as `VITE_SMS_API_URL` for production.
 
 ## Data

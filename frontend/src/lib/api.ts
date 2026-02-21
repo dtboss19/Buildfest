@@ -74,11 +74,25 @@ export async function apiPostFoodRescue(body: {
   if (body.photo_url) formData.set('photo_url', body.photo_url);
   if (body.photoFile) formData.set('photo', body.photoFile);
   const res = await fetch(`${API_URL}/api/food-rescue`, { method: 'POST', body: formData });
+  const text = await res.text();
   if (!res.ok) {
-    const err = await res.text();
-    throw new Error(err || 'Failed to create post');
+    if (text.trimStart().startsWith('<')) {
+      throw new Error(
+        'Server returned HTML (405/404). Set VITE_API_URL to your Railway backend URL (e.g. https://buildfest-production-c655.up.railway.app) in the environment where the frontend is built (e.g. Vercel), then redeploy.'
+      );
+    }
+    throw new Error(text || 'Failed to create post');
   }
-  return res.json();
+  try {
+    return JSON.parse(text) as { id: string };
+  } catch {
+    if (text.trimStart().startsWith('<')) {
+      throw new Error(
+        'Server returned HTML instead of JSON. Set VITE_API_URL to your Railway backend URL and redeploy the frontend.'
+      );
+    }
+    throw new Error('Invalid JSON response');
+  }
 }
 
 export async function apiGetChatRooms(): Promise<{ id: string; name: string; type: string }[]> {
