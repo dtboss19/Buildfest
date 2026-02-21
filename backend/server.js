@@ -5,12 +5,17 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import multer from 'multer';
 import { randomUUID } from 'crypto';
+import twilio from 'twilio';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const dbPath = path.join(__dirname, 'data.db');
 const db = new Database(dbPath);
 
 db.exec(`
+  CREATE TABLE IF NOT EXISTS sms_subscribers (
+    phone TEXT PRIMARY KEY,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
   CREATE TABLE IF NOT EXISTS food_rescue_posts (
     id TEXT PRIMARY KEY,
     event_name TEXT NOT NULL,
@@ -165,6 +170,161 @@ app.post('/api/chat/rooms/:roomId/messages', (req, res) => {
     res.status(201).json({ id, room_id: roomId, content: body.content, display_name: displayName, created_at: new Date().toISOString() });
   } catch (e) {
     res.status(500).json({ error: String(e.message) });
+  }
+});
+
+// --- SMS (Twilio) ---
+const TWILIO_SID = process.env.TWILIO_ACCOUNT_SID;
+const TWILIO_TOKEN = process.env.TWILIO_AUTH_TOKEN;
+const TWILIO_FROM = process.env.TWILIO_PHONE_NUMBER;
+
+function normalizePhone(raw) {
+  const digits = String(raw || '').replace(/\D/g, '');
+  if (digits.length === 10) return '+1' + digits;
+  if (digits.length === 11 && digits.startsWith('1')) return '+' + digits;
+  return null;
+}
+
+function loadShelters() {
+  const p = path.join(__dirname, 'shelters.json');
+  const data = fs.readFileSync(p, 'utf8');
+  return JSON.parse(data);
+}
+
+function openToday(shelters, day) {
+  return shelters
+    .filter((s) => s.schedule && s.schedule.some((e) => e.day === day))
+    .sort((a, b) => (a.distanceMiles || 0) - (b.distanceMiles || 0));
+}
+
+function formatTime(hhmm) {
+  if (!hhmm || hhmm.length < 5) return hhmm || '';
+  const h = parseInt(hhmm.slice(0, 2), 10);
+  const m = parseInt(hhmm.slice(3, 5), 10) || 0;
+  if (h === 0) return m === 0 ? '12am' : `12:${String(m).padStart(2, '0')}am`;
+  if (h === 12) return m === 0 ? '12pm' : `12:${String(m).padStart(2, '0')}pm`;
+  if (h < 12) return m === 0 ? `${h}am` : `${h}:${String(m).padStart(2, '0')}am`;
+  return m === 0 ? `${h - 12}pm` : `${h - 12}:${String(m).padStart(2, '0')}pm`;
+}
+
+function formatSlots(slots) {
+  if (!Array.isArray(slots) || slots.length === 0) return '';
+  return slots
+    .map((slot) => {
+      const o = slot.open || '';
+      const c = slot.close || '';
+      return o && c ? `${formatTime(o)}-${formatTime(c)}` : '';
+    })
+    .filter(Boolean)
+    .join(', ');
+}
+
+function buildDailyMessage(day) {
+  try {
+    const shelters = loadShelters();
+    const openList = openToday(shelters, day).slice(0, 5);
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const dayName = dayNames[day];
+    if (openList.length === 0) {
+      return `Common Table: No locations open ${dayName}. Call 1-888-711-1151. Reply STOP to unsubscribe.`;
+    }
+    const lines = [`Food shelves open ${dayName} (near campus):`];
+    for (const s of openList) {
+      const entry = s.schedule?.find((e) => e.day === day);
+      const hours = entry ? formatSlots(entry.slots || []) : '';
+      const note = entry?.note ? ` (${entry.note})` : '';
+      lines.push(`• ${s.name} (${s.distanceMiles} mi)`);
+      lines.push(`  ${s.address || ''}`);
+      if (hours) lines.push(`  Hours: ${hours}${note}`);
+      lines.push(`  Req: ${s.eligibility || 'Call for details.'}`);
+      if (s.contact) lines.push(`  Call: ${s.contact}`);
+    }
+    lines.push('Reply STOP to unsubscribe.');
+    return lines.join('\n');
+  } catch (e) {
+    return 'Common Table: Alerts temporarily unavailable. Call 1-888-711-1151. Reply STOP to unsubscribe.';
+  }
+}
+
+function sendSms(to, body) {
+  if (!TWILIO_SID || !TWILIO_TOKEN || !TWILIO_FROM) return false;
+  try {
+    const client = twilio(TWILIO_SID, TWILIO_TOKEN);
+    client.messages.create({ body, to, from: TWILIO_FROM });
+    return true;
+  } catch (err) {
+    return false;
+  }
+}
+
+function runDailySend(dayArg) {
+  const day = dayArg != null ? dayArg : new Date().getDay();
+  const body = buildDailyMessage(day);
+  const rows = db.prepare('SELECT phone FROM sms_subscribers').all();
+  let sent = 0;
+  for (const row of rows) {
+    if (sendSms(row.phone, body)) sent++;
+  }
+  return { subscribers: rows.length, sent };
+}
+
+app.post('/api/subscribe', (req, res) => {
+  try {
+    const phone = normalizePhone((req.body?.phone || '').trim());
+    if (!phone) {
+      return res.status(400).json({ ok: false, error: 'Invalid phone number' });
+    }
+    db.prepare('INSERT OR REPLACE INTO sms_subscribers (phone) VALUES (?)').run(phone);
+    const welcome =
+      "You're signed up for Common Table alerts. We'll text you which locations are open and closest to campus. Reply STOP to unsubscribe.";
+    if (sendSms(phone, welcome)) {
+      return res.json({ ok: true, message: 'Subscribed. Check your phone for confirmation.' });
+    }
+    return res.json({ ok: true, message: 'Subscribed. (SMS not sent—check server Twilio config.)' });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e.message) });
+  }
+});
+
+app.post('/api/unsubscribe', (req, res) => {
+  try {
+    const phone = normalizePhone((req.body?.phone || '').trim());
+    if (!phone) {
+      return res.status(400).json({ ok: false, error: 'Invalid phone number' });
+    }
+    db.prepare('DELETE FROM sms_subscribers WHERE phone = ?').run(phone);
+    return res.json({ ok: true, message: 'Unsubscribed.' });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e.message) });
+  }
+});
+
+app.get('/api/send-daily', (req, res) => {
+  const cronSecret = process.env.CRON_SECRET;
+  if (cronSecret && req.query.key !== cronSecret) {
+    return res.status(401).json({ ok: false, error: 'Unauthorized' });
+  }
+  const day = req.query.day != null ? parseInt(req.query.day, 10) : undefined;
+  const result = runDailySend(day);
+  res.json({ ok: true, subscribers: result.subscribers, sent: result.sent });
+});
+
+app.post('/api/send-daily', (req, res) => {
+  const cronSecret = process.env.CRON_SECRET;
+  if (cronSecret && req.query.key !== cronSecret) {
+    return res.status(401).json({ ok: false, error: 'Unauthorized' });
+  }
+  const day = req.query.day != null ? parseInt(req.query.day, 10) : undefined;
+  const result = runDailySend(day);
+  res.json({ ok: true, subscribers: result.subscribers, sent: result.sent });
+});
+
+app.get('/api/sms/health', (_req, res) => {
+  try {
+    const row = db.prepare('SELECT COUNT(*) as count FROM sms_subscribers').get();
+    res.json({ ok: true, subscribers: row?.count ?? 0 });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e.message) });
   }
 });
 
