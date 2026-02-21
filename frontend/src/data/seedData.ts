@@ -190,10 +190,31 @@ export function getSeedChatMessagesByRoomId(roomId: string): ChatMessage[] {
   return name ? getSeedChatMessages(name) : [];
 }
 
-// ---- Community feed items (from seed rescues + seed photos) ----
+// ---- Community feed: fake posts for demo ----
+const SEED_COMMUNITY_POSTS: { content: string; is_anonymous: boolean; shelter_id: string | null; created_at_offset_min: number }[] = [
+  { content: 'Just picked up fresh produce at Keystone — they had tons of greens and root veggies today. So grateful!', is_anonymous: false, shelter_id: 'keystone', created_at_offset_min: -45 },
+  { content: 'Does anyone know if the SNAP office on University is open on Saturdays? Need to renew my benefits.', is_anonymous: true, shelter_id: null, created_at_offset_min: -120 },
+  { content: 'Made a big batch of lentil soup with food shelf items. Recipe: lentils, canned tomatoes, onion, garlic, cumin. Fed my family for two days.', is_anonymous: false, shelter_id: null, created_at_offset_min: -180 },
+  { content: 'Hallie Q. Brown was really welcoming when I went yesterday. Staff helped me find halal options.', is_anonymous: true, shelter_id: 'hallie-q-brown', created_at_offset_min: -240 },
+  { content: 'Tip: Open Cupboard has a community fridge — you can drop off or take leftovers no questions asked. Check their hours first.', is_anonymous: false, shelter_id: 'open-cupboard', created_at_offset_min: -300 },
+  { content: 'Struggling to make the drive to Neighbors Inc. — anyone carpool from the St. Paul area?', is_anonymous: true, shelter_id: 'neighbors-inc', created_at_offset_min: -360 },
+  { content: 'Recipe share: canned chickpeas + curry powder + coconut milk + rice = easy dinner in 20 min. Kids actually ate it!', is_anonymous: false, shelter_id: null, created_at_offset_min: -420 },
+  { content: 'Just wanted to say this community is so helpful. Thank you to everyone who posts tips and support.', is_anonymous: true, shelter_id: null, created_at_offset_min: -500 },
+];
+
+// ---- Community feed items (from seed rescues + seed photos + seed posts) ----
 export function getSeedCommunityFeedItems(): SeedFeedItem[] {
   const rescues = getSeedFoodRescuePosts().filter((r) => r.status === 'available').slice(0, 5);
   const photos = getSeedShelterPhotos();
+  const postItems: SeedFeedItem[] = SEED_COMMUNITY_POSTS.map((p, i) => ({
+    id: `seed-post-${i}`,
+    type: 'post' as const,
+    shelter_id: p.shelter_id,
+    reference_id: `seed-post-${i}`,
+    created_at: new Date(NOW + p.created_at_offset_min * MS_MIN).toISOString(),
+    is_anonymous: p.is_anonymous,
+    description: p.content,
+  }));
   const items: SeedFeedItem[] = [
     ...photos.map((p) => ({
       id: p.id,
@@ -213,6 +234,7 @@ export function getSeedCommunityFeedItems(): SeedFeedItem[] {
       is_anonymous: r.is_anonymous,
       description: r.event_name,
     })),
+    ...postItems,
   ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   return items;
 }

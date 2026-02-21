@@ -39,8 +39,10 @@ export function CommunityPage() {
           const rescues = await apiGetFoodRescue();
           clearTimeoutSafe();
           if (!mounted) return;
+          const seedItems = getSeedCommunityFeedItems() as FeedItem[];
+          const seedIds = new Set(seedItems.map((i) => i.id));
           const rescueItems: FeedItem[] = (rescues || [])
-            .filter((r) => r.status === 'available')
+            .filter((r) => r.status === 'available' && !seedIds.has(r.id))
             .map((r) => ({
               id: r.id,
               type: 'rescue' as const,
@@ -49,9 +51,9 @@ export function CommunityPage() {
               created_at: r.created_at,
               is_anonymous: r.is_anonymous,
               description: r.event_name,
-            }))
-            .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-          setItems(rescueItems.length > 0 ? rescueItems : (getSeedCommunityFeedItems() as FeedItem[]));
+            }));
+          const merged = [...seedItems, ...rescueItems].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+          setItems(merged);
         } catch {
           if (mounted) setItems(getSeedCommunityFeedItems() as FeedItem[]);
         } finally {
