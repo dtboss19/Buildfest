@@ -50,17 +50,12 @@ export function SmsSignup() {
     }
   };
 
-  const isConfigured = Boolean(SMS_API_URL);
-
   return (
     <section className="sms-signup" aria-labelledby="sms-signup-title">
       <h2 id="sms-signup-title">Get SMS alerts</h2>
       <p className="sms-signup-desc">
         Get a daily text with the closest food shelves open that day. You can unsubscribe anytime.
       </p>
-      {!isConfigured && (
-        <p className="sms-signup-demo">SMS alerts are a key feature — connect the backend to enable live signups.</p>
-      )}
       <form onSubmit={handleSubmit} className="sms-signup-form">
         <label htmlFor="sms-phone" className="sr-only">Phone number</label>
         <input
@@ -71,11 +66,11 @@ export function SmsSignup() {
           value={phone}
           onChange={(e) => setPhone(normalizePhone(e.target.value))}
           className="sms-input"
-          disabled={status === 'loading' || !isConfigured}
+          disabled={status === 'loading'}
           autoComplete="tel"
         />
-        <button type="submit" className="btn-sms-submit" disabled={status === 'loading' || !isConfigured}>
-          {status === 'loading' ? 'Subscribing…' : !isConfigured ? 'Coming soon' : 'Subscribe'}
+        <button type="submit" className="btn-sms-submit" disabled={status === 'loading'}>
+          {status === 'loading' ? 'Subscribing…' : 'Subscribe'}
         </button>
       </form>
       {message && (

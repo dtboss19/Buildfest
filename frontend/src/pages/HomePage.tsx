@@ -1,14 +1,19 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import type { DayOfWeek } from '../types';
 import type { FoodShelter } from '../types';
-import { foodShelters } from '../data/shelters';
+import { foodShelters, DAY_NAMES } from '../data/shelters';
+import { WeekStrip } from '../components/WeekStrip';
+import { ShelterCard } from '../components/ShelterCard';
+import { MapPanel } from '../components/MapPanel';
 import { SmsSignup } from '../components/SmsSignup';
-import { isOpenAtTime } from '../utils/time';
+import { isOpenAtTime, getFirstOpenTime, formatTime } from '../utils/time';
 import { getSeedFoodRescuePosts } from '../data/seedData';
 import { getSeedChatMessages } from '../data/seedData';
 import '../App.css';
 import './HomePage.css';
+
+const SHELTER_FINDER_ID = 'shelter-finder';
 
 type DietaryFilter = 'all' | 'vegetarian' | 'halal' | 'kosher' | 'gluten-free' | 'no-requirements';
 
@@ -17,6 +22,41 @@ function shelterMatchesDietary(shelter: FoodShelter, filter: DietaryFilter): boo
   if (filter === 'all') return true;
   if (filter === 'no-requirements') return opts.length === 0 || opts.includes('no-requirements');
   return opts.includes(filter);
+}
+
+function getOpenNowCount(
+  sheltersForDay: { shelter: FoodShelter; daySchedule: { slots: { open: string; close: string }[] } | undefined }[],
+  currentDay: DayOfWeek,
+  nowMinutes: number
+): number {
+  const today = new Date().getDay() as DayOfWeek;
+  if (currentDay !== today) return 0;
+  return sheltersForDay.filter(({ daySchedule }) => daySchedule && isOpenAtTime(daySchedule.slots, nowMinutes)).length;
+}
+
+type NextOpening = { name: string; time: string } | null;
+
+function getNextOpening(
+  sheltersForDay: { shelter: FoodShelter; daySchedule: { slots: { open: string; close: string }[] } | undefined }[],
+  currentDay: DayOfWeek,
+  nowMinutes: number
+): NextOpening {
+  const today = new Date().getDay() as DayOfWeek;
+  const openNow = getOpenNowCount(sheltersForDay, currentDay, nowMinutes);
+  if (openNow > 0) return null;
+  const tomorrow = ((currentDay + 1) % 7) as DayOfWeek;
+  let first: { name: string; time: string; minutes: number } | null = null;
+  for (const shelter of foodShelters) {
+    const entry = shelter.schedule.find((e) => e.day === tomorrow);
+    if (!entry?.slots?.length) continue;
+    const t = getFirstOpenTime(entry.slots);
+    if (!t) continue;
+    const [h, m] = t.split(':').map(Number);
+    const minutes = (h ?? 0) * 60 + (m ?? 0);
+    const timeStr = formatTime(t);
+    if (!first || minutes < first.minutes) first = { name: shelter.name, time: timeStr, minutes };
+  }
+  return first ? { name: first.name, time: first.time } : null;
 }
 
 function formatCountdown(expiryTime: string): string {
@@ -31,12 +71,39 @@ function formatCountdown(expiryTime: string): string {
 }
 
 export function HomePage() {
+  const navigate = useNavigate();
   const today = new Date().getDay() as DayOfWeek;
   const now = new Date();
   const nowMinutes = now.getHours() * 60 + now.getMinutes();
-  const dietaryFilter: DietaryFilter = 'all';
-  const selectedDay = today;
+  const [selectedDay, setSelectedDay] = useState<DayOfWeek>(() => today);
+  const [dietaryFilter, setDietaryFilter] = useState<DietaryFilter>('all');
 
+  const sheltersForDay = useMemo(
+    () =>
+      foodShelters
+        .filter((s) => shelterMatchesDietary(s, dietaryFilter))
+        .map((shelter) => ({
+          shelter,
+          daySchedule: shelter.schedule.find((e) => e.day === selectedDay),
+        })),
+    [selectedDay, dietaryFilter]
+  );
+
+  const sheltersWithPins = useMemo(() => sheltersForDay.map((x) => x.shelter), [sheltersForDay]);
+  const openNowCount = useMemo(
+    () => getOpenNowCount(sheltersForDay, selectedDay, nowMinutes),
+    [sheltersForDay, selectedDay, nowMinutes]
+  );
+  const nextOpening = useMemo(
+    () => getNextOpening(sheltersForDay, selectedDay, nowMinutes),
+    [sheltersForDay, selectedDay, nowMinutes]
+  );
+
+  const handleSelectShelter = (shelter: FoodShelter) => navigate(`/shelter/${shelter.id}`);
+
+  const scrollToFinder = () => {
+    document.getElementById(SHELTER_FINDER_ID)?.scrollIntoView({ behavior: 'smooth' });
+  };
   const scrollToSms = () => {
     document.getElementById('sms-alerts')?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -65,7 +132,7 @@ export function HomePage() {
   const [recipeWeekExpanded, setRecipeWeekExpanded] = useState(false);
 
   useEffect(() => {
-    const sections = document.querySelectorAll('.home-hero, .home-how, .home-sms, .home-rescue-preview, .home-community-preview');
+    const sections = document.querySelectorAll('.home-hero, .home-how, .home-finder, .home-sms, .home-rescue-preview, .home-community-preview');
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -88,15 +155,18 @@ export function HomePage() {
             Find free food near you, rescue surplus food from events, and connect with your community — all in one place.
           </p>
           <div className="home-hero-ctas">
-            <Link to="/food-rescue" className="home-btn home-btn-primary">
+            <button type="button" className="home-btn home-btn-primary" onClick={scrollToFinder}>
               Find Food Near Me
-            </Link>
+            </button>
             <Link to="/food-rescue/new" className="home-btn home-btn-secondary">
               Share Surplus Food
             </Link>
             <button type="button" className="home-btn home-btn-tertiary" onClick={scrollToSms}>
               Get text alerts
             </button>
+            <Link to="/community/chat" className="home-btn home-btn-tertiary">
+              Chat
+            </Link>
           </div>
         </div>
       </section>
@@ -154,14 +224,74 @@ export function HomePage() {
         </section>
       )}
 
-      {/* Section 4: SMS alerts (selling point) */}
+      {/* Find food near you: calendar + list + map */}
+      <section id={SHELTER_FINDER_ID} className="home-finder">
+        <div className="home-finder-inner">
+          <h2 className="home-section-title">Find food near you</h2>
+          <p className="home-section-subtitle">Open today and this week near St. Paul & Minneapolis</p>
+
+          <div className="home-finder-dietary">
+            {(['all', 'vegetarian', 'halal', 'kosher', 'gluten-free', 'no-requirements'] as const).map((f) => (
+              <button
+                key={f}
+                type="button"
+                className={`home-dietary-pill ${dietaryFilter === f ? 'active' : ''}`}
+                onClick={() => setDietaryFilter(f)}
+              >
+                {f === 'all' ? 'All' : f === 'no-requirements' ? 'No Requirements' : f === 'gluten-free' ? 'Gluten-Free' : f === 'halal' ? 'Halal' : f === 'kosher' ? 'Kosher' : 'Vegetarian'}
+              </button>
+            ))}
+          </div>
+          <div className="home-finder-two-col">
+            <div className="home-finder-left">
+              <div className="home-finder-week">
+                <WeekStrip selectedDay={selectedDay} onSelectDay={setSelectedDay} />
+                <p className="home-finder-day-label" aria-live="polite">{DAY_NAMES[selectedDay]}</p>
+              </div>
+              {openNowCount > 0 ? (
+                <div className="home-open-now home-open-now-green" role="status">
+                  🟢 {openNowCount} place{openNowCount !== 1 ? 's' : ''} open right now near campus
+                </div>
+              ) : nextOpening ? (
+                <div className="home-open-now home-open-now-grey" role="status">
+                  Next opening: {nextOpening.name} opens at {nextOpening.time} tomorrow
+                </div>
+              ) : null}
+              <div className="home-shelter-list-scroll">
+                <div className="home-shelter-list" aria-label={`Food shelves — ${DAY_NAMES[selectedDay]}`}>
+                  {sheltersForDay.map(({ shelter, daySchedule }) => (
+                    <ShelterCard
+                      key={shelter.id}
+                      shelter={shelter}
+                      daySchedule={daySchedule}
+                      onSelect={handleSelectShelter}
+                      compact
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="home-finder-right">
+              <div className="home-map-wrap">
+                <MapPanel shelters={sheltersWithPins} />
+              </div>
+              <div className="home-map-legend">
+                <span className="home-legend-item"><span className="home-legend-dot home-legend-open" /> Open today</span>
+                <span className="home-legend-item"><span className="home-legend-dot home-legend-closed" /> Closed today</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Section 4: SMS alerts */}
       <section id="sms-alerts" className="home-sms">
         <div className="home-sms-inner">
           <SmsSignup />
         </div>
       </section>
 
-      {/* Section 6: Food Rescue Preview */}
+      {/* Section 5: Food Rescue Preview */}
       <section className="home-rescue-preview">
         <div className="home-rescue-inner">
           <h2 className="home-section-title">Surplus food available now</h2>
