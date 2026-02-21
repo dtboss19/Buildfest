@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { supabase } from '../../lib/supabase';
+import { supabase, hasSupabaseConfig } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { useRequireAuth } from '../../hooks/useRequireAuth';
 import { AnonymousToggle } from '../AnonymousToggle';
@@ -24,6 +24,11 @@ export function ShelterChatTab({ shelterId }: ShelterChatTabProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (!hasSupabaseConfig) {
+      setRoom(null);
+      setLoading(false);
+      return;
+    }
     let mounted = true;
     (async () => {
       const { data: roomData } = await supabase.from('chat_rooms').select('*').eq('shelter_id', shelterId).eq('type', 'shelter').maybeSingle();

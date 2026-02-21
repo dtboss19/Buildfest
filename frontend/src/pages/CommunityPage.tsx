@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import { hasApiConfig, apiGetFoodRescue } from '../lib/api';
 import { formatRelativeTime } from '../utils/formatDate';
 import { foodShelters } from '../data/shelters';
 import { getSeedCommunityFeedItems, type SeedFeedItem } from '../data/seedData';
@@ -33,6 +34,31 @@ export function CommunityPage() {
       }
     }, 6000);
     (async () => {
+      if (hasApiConfig()) {
+        try {
+          const rescues = await apiGetFoodRescue();
+          clearTimeoutSafe();
+          if (!mounted) return;
+          const rescueItems: FeedItem[] = (rescues || [])
+            .filter((r) => r.status === 'available')
+            .map((r) => ({
+              id: r.id,
+              type: 'rescue' as const,
+              shelter_id: null,
+              reference_id: r.id,
+              created_at: r.created_at,
+              is_anonymous: r.is_anonymous,
+              description: r.event_name,
+            }))
+            .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+          setItems(rescueItems.length > 0 ? rescueItems : (getSeedCommunityFeedItems() as FeedItem[]));
+        } catch {
+          if (mounted) setItems(getSeedCommunityFeedItems() as FeedItem[]);
+        } finally {
+          if (mounted) setLoading(false);
+        }
+        return;
+      }
       try {
         const [photos, posts, rescues] = await Promise.race([
           Promise.all([

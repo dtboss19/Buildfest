@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { AnonymousToggle } from '../components/AnonymousToggle';
+import { hasApiConfig, apiGetChatRooms, apiGetChatMessages, apiPostChatMessage } from '../lib/api';
 import { formatRelativeTime } from '../utils/formatDate';
 import { getSeedChatRooms, getSeedChatMessagesByRoomId, SEED_CHAT_ROOM_IDS } from '../data/seedData';
 import type { ChatRoom, ChatMessage } from '../types/database';
@@ -23,6 +24,8 @@ export function CommunityChatPage() {
   const [sendError, setSendError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
 
+  const useApi = hasApiConfig();
+
   useEffect(() => {
     let mounted = true;
     let timeoutId: number = 0;
@@ -36,6 +39,24 @@ export function CommunityChatPage() {
       }
     }, 5000);
     (async () => {
+      if (useApi) {
+        try {
+          const list = await apiGetChatRooms();
+          clearTimeoutSafe();
+          if (!mounted) return;
+          setRooms(list.length > 0 ? (list as ChatRoom[]) : getSeedChatRooms());
+          if (list.length > 0) setSelectedRoomId(list[0].id);
+          else setSelectedRoomId(getSeedChatRooms()[0].id);
+        } catch {
+          if (mounted) {
+            setRooms(getSeedChatRooms());
+            setSelectedRoomId(getSeedChatRooms()[0].id);
+          }
+        } finally {
+          if (mounted) setLoading(false);
+        }
+        return;
+      }
       try {
         const { data } = await supabase.from('chat_rooms').select('*').eq('type', 'topic').order('name', { ascending: true });
         if (!mounted) return;
@@ -55,6 +76,19 @@ export function CommunityChatPage() {
       }
     })();
     return () => { mounted = false; clearTimeoutSafe(); };
+  }, [useApi]);
+
+  const fetchApiMessages = useCallback(async (roomId: string) => {
+    const list = await apiGetChatMessages(roomId);
+    const asChat: ChatMessage[] = list.map((m) => ({
+      ...m,
+      user_id: (m as { user_id?: string }).user_id ?? (m as { display_name?: string }).display_name ?? 'User',
+      is_pinned: false,
+    }));
+    setMessages(asChat);
+    const nameMap: Record<string, string> = {};
+    asChat.forEach((m) => { if (m.user_id) nameMap[m.user_id] = m.user_id; });
+    setDisplayNamesByUserId((prev) => ({ ...prev, ...nameMap }));
   }, []);
 
   useEffect(() => {
@@ -64,6 +98,11 @@ export function CommunityChatPage() {
       setMessages(getSeedChatMessagesByRoomId(selectedRoomId));
       return;
     }
+    if (useApi) {
+      fetchApiMessages(selectedRoomId).catch(() => setMessages([]));
+      const interval = setInterval(() => fetchApiMessages(selectedRoomId).catch(() => {}), 4000);
+      return () => clearInterval(interval);
+    }
     const p = supabase.from('chat_messages').select('*').eq('room_id', selectedRoomId).order('created_at', { ascending: true }).then(({ data }) => {
       setMessages((data ?? []) as ChatMessage[]);
     });
@@ -72,10 +111,10 @@ export function CommunityChatPage() {
       setMessages((prev) => [...prev, payload.new as ChatMessage]);
     }).subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [selectedRoomId]);
+  }, [selectedRoomId, useApi, fetchApiMessages]);
 
   useEffect(() => {
-    if (!selectedRoomId || selectedRoomId.startsWith('seed-') || messages.length === 0) return;
+    if (useApi || !selectedRoomId || selectedRoomId.startsWith('seed-') || messages.length === 0) return;
     const userIds = [...new Set(messages.map((m) => m.user_id))];
     if (userIds.length === 0) return;
     const p = supabase
@@ -90,11 +129,11 @@ export function CommunityChatPage() {
         setDisplayNamesByUserId((prev) => ({ ...prev, ...map }));
       });
     void Promise.resolve(p).catch(() => {});
-  }, [selectedRoomId, messages]);
+  }, [selectedRoomId, messages, useApi]);
 
   const getDisplayName = (m: ChatMessage): string => {
     if (m.is_anonymous) return ANONYMOUS_DISPLAY;
-    return displayNamesByUserId[m.user_id] ?? 'User';
+    return displayNamesByUserId[m.user_id] ?? (m as ChatMessage & { display_name?: string }).display_name ?? 'User';
   };
 
   const handleSendMessage = async (e: React.FormEvent) => {
@@ -103,6 +142,18 @@ export function CommunityChatPage() {
     if (!selectedRoomId || !content.trim()) return;
     if (selectedRoomId.startsWith('seed-')) return;
     setSending(true);
+    if (useApi) {
+      try {
+        await apiPostChatMessage(selectedRoomId, content.trim(), isAnonymous);
+        setContent('');
+        await fetchApiMessages(selectedRoomId);
+      } catch (err) {
+        setSendError(err instanceof Error ? err.message : 'Failed to send message');
+      } finally {
+        setSending(false);
+      }
+      return;
+    }
     let currentUser = user;
     if (!currentUser) {
       const result = await ensureAnonymousSession();

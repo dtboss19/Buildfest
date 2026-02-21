@@ -18,6 +18,48 @@ External resource for the University of St. Thomas (St. Paul, MN) community when
 
 1. **Supabase** — Create a project, run `supabase/migrations/001_initial_schema.sql`, create storage buckets (`avatars`, `shelter-photos`, `food-rescue-photos`), then set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in `frontend/.env`.
 2. **Optional: SMS + AI** — To enable SMS signup and AI food detection on photos, set `VITE_SMS_API_URL` in `frontend/.env` and run the `sms/` service (see [SMS alerts](#sms-alerts-optional) below).
+3. **Optional: No Supabase** — You can run **food rescue** and **community chat** without Supabase by using the included backend. See [Run without Supabase](#run-without-supabase-optional-backend) below.
+
+## Run without Supabase (optional backend)
+
+To let users create food rescue posts and send chat messages **without any Supabase or sign-in**:
+
+1. **Start the backend** (from repo root):
+   ```bash
+   cd backend
+   npm install
+   npm start
+   ```
+   The API runs at `http://localhost:3001` and uses a local SQLite DB (`data.db`).
+
+2. **Point the frontend at it**: In `frontend/.env` set:
+   ```env
+   VITE_API_URL=http://localhost:3001
+   ```
+   Do **not** set `VITE_SUPABASE_URL` (or leave it empty) if you want food rescue and chat to use only the backend.
+
+3. Restart the frontend (`npm run dev` in `frontend/`). Create post and Community chat will use the API: no auth, no Supabase. Visitors get a random persistent name (stored in the browser).
+
+For production, deploy the backend (e.g. Railway, see below) and set `VITE_API_URL` to its URL. The backend allows CORS from any origin.
+
+### Deploy backend on Railway (no Supabase)
+
+You can run the app with **only the backend** — no Supabase, no sign-in. Food Rescue and Community Chat work with the Railway API; other features (per-shelter community/photos, profiles) show empty or a short message.
+
+1. **Deploy the backend**
+   - Go to [Railway](https://railway.app) and create a new project.
+   - Connect your GitHub repo and set the **Root Directory** to `backend` (or deploy from the `backend/` folder).
+   - Railway will detect Node and run `npm start`. The server uses `process.env.PORT` (Railway sets this).
+   - After deploy, copy the public URL (e.g. `https://your-app.up.railway.app`).
+
+2. **Point the frontend at the backend**
+   - In **Vercel** (or your frontend host), add one environment variable:  
+     **`VITE_API_URL`** = your Railway backend URL (e.g. `https://your-app.up.railway.app`).
+   - Do **not** set `VITE_SUPABASE_URL` or `VITE_SUPABASE_ANON_KEY`. With only `VITE_API_URL` set, the app uses the backend for Food Rescue and Chat and makes no Supabase connections.
+
+3. Redeploy the frontend so the new env is baked in. Create post and Community chat will work without any sign-in.
+
+**Note:** The backend uses SQLite and local file uploads. On Railway the filesystem is ephemeral, so data and uploads are lost on redeploy unless you add a persistent volume. For production you may want to switch to a hosted DB (e.g. PostgreSQL) and object storage later.
 
 ## Run locally
 
@@ -46,9 +88,9 @@ Output is in `frontend/dist/`. Serve with any static host.
 2. In [Vercel](https://vercel.com), **Add New Project** and import this repo.
 3. Set **Root Directory** to `frontend` (Edit → Root Directory → `frontend`).
 4. Add **Environment Variables** (Settings → Environment Variables) so the build can embed them:
-   - `VITE_SUPABASE_URL` — your Supabase project URL (e.g. `https://xxxx.supabase.co`).
-   - `VITE_SUPABASE_ANON_KEY` — your Supabase anon/public key.
-   - Optional: `VITE_SMS_API_URL` — full URL of your deployed SMS service (e.g. `https://your-sms.railway.app`) if you use SMS/AI.
+   - **To use Supabase:** `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`.
+   - **To use only the backend (no Supabase):** set `VITE_API_URL` to your backend URL (e.g. `https://your-backend.up.railway.app`) and leave Supabase vars unset.
+   - Optional: `VITE_SMS_API_URL` — full URL of your deployed SMS service if you use SMS/AI.
 5. Deploy. The app will be built with `npm run build` and served with SPA rewrites (see `frontend/vercel.json`).
 
 The optional SMS/AI Python service in `sms/` must be hosted separately (e.g. Railway, Render) and its URL set as `VITE_SMS_API_URL` for production.

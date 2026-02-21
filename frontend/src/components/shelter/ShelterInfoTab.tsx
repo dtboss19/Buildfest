@@ -4,7 +4,7 @@ import type { FoodShelter, ScheduleEntry } from '../../types';
 import { formatSlot } from '../../utils/time';
 import { googleMapsPinUrl, googleMapsTransitUrl, metroTransitTripPlannerUrl } from '../../utils/maps';
 import { useAuth } from '../../contexts/AuthContext';
-import { supabase } from '../../lib/supabase';
+import { supabase, hasSupabaseConfig } from '../../lib/supabase';
 interface ShelterInfoTabProps {
   shelter: FoodShelter;
 }
@@ -19,7 +19,7 @@ export function ShelterInfoTab({ shelter }: ShelterInfoTabProps) {
   const [saving, setSaving] = useState(false);
 
   const toggleSave = async () => {
-    if (!user || !profile) return;
+    if (!hasSupabaseConfig || !user || !profile) return;
     setSaving(true);
     const next = saved
       ? (profile.saved_shelters ?? []).filter((id) => id !== shelter.id)
@@ -39,7 +39,7 @@ export function ShelterInfoTab({ shelter }: ShelterInfoTabProps) {
     <div className="shelter-info-tab">
       <p className="shelter-address">{fullAddress(shelter)}</p>
       <p className="shelter-distance">{shelter.distanceMiles} miles from campus</p>
-      {user && (
+      {hasSupabaseConfig && user && (
         <button type="button" className="btn btn-primary" onClick={toggleSave} disabled={saving}>
           {saved ? 'Unsave this shelter' : 'Save this shelter'}
         </button>

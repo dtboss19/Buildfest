@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { AnonymousToggle } from '../components/AnonymousToggle';
+import { hasApiConfig, apiPostFoodRescue } from '../lib/api';
 import type { PickupType } from '../types/database';
 import './FoodRescueNewPage.css';
 
@@ -21,11 +22,34 @@ export function FoodRescueNewPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const useApi = hasApiConfig();
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!eventName.trim() || !expiryTime) return;
     setLoading(true);
     setError(null);
+    if (useApi) {
+      try {
+        await apiPostFoodRescue({
+          event_name: eventName.trim(),
+          description: description.trim() || undefined,
+          quantity: quantity.trim() || undefined,
+          location: location.trim() || undefined,
+          pickup_type: pickupType,
+          expiry_time: new Date(expiryTime).toISOString(),
+          is_anonymous: isAnonymous,
+          special_notes: specialNotes.trim() || undefined,
+          photoFile: photoFile ?? undefined,
+        });
+        navigate('/food-rescue');
+      } catch (err) {
+        setError(err instanceof Error ? err.message : String(err));
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
     let currentUser = user;
     if (!currentUser) {
       const result = await ensureAnonymousSession();
@@ -74,14 +98,14 @@ export function FoodRescueNewPage() {
     }
   };
 
-  if (authLoading) {
+  if (!useApi && authLoading) {
     return <div className="food-rescue-new-page"><p className="loading">Loading…</p></div>;
   }
 
   return (
     <div className="food-rescue-new-page">
       <h1>Create food rescue post</h1>
-      <p className="food-rescue-new-hint">No account needed — you’ll get a random name. Post as anonymous if you prefer.</p>
+      <p className="food-rescue-new-hint">{useApi ? 'No account or sign-in — you’ll get a random name. Post as anonymous if you prefer.' : 'No account needed — you’ll get a random name. Post as anonymous if you prefer.'}</p>
       {error && <p className="error">{error}</p>}
       <form onSubmit={handleSubmit} className="rescue-form">
         <label>Event name <input type="text" value={eventName} onChange={(e) => setEventName(e.target.value)} required /></label>

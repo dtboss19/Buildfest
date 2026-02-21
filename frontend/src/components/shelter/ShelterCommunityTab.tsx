@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { supabase } from '../../lib/supabase';
+import { supabase, hasSupabaseConfig } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { useRequireAuth } from '../../hooks/useRequireAuth';
 import { AnonymousToggle } from '../AnonymousToggle';
@@ -28,6 +28,10 @@ export function ShelterCommunityTab({ shelterId }: ShelterCommunityTabProps) {
   const [commentAnonymous, setCommentAnonymous] = useState<Record<string, boolean>>({});
 
   const fetchPosts = async () => {
+    if (!hasSupabaseConfig) {
+      setPosts([]);
+      return;
+    }
     try {
       const { data } = await supabase
         .from('community_posts')
@@ -51,12 +55,11 @@ export function ShelterCommunityTab({ shelterId }: ShelterCommunityTabProps) {
   }, [shelterId]);
 
   useEffect(() => {
-    if (expandedPostId && !commentsByPost[expandedPostId]) {
-      const p = supabase.from('comments').select('*').eq('post_id', expandedPostId).order('created_at', { ascending: true }).then(({ data }) => {
-        setCommentsByPost((prev) => ({ ...prev, [expandedPostId]: (data ?? []) as Comment[] }));
-      });
-      void Promise.resolve(p).catch(() => {});
-    }
+    if (!hasSupabaseConfig || !expandedPostId || commentsByPost[expandedPostId]) return;
+    const p = supabase.from('comments').select('*').eq('post_id', expandedPostId).order('created_at', { ascending: true }).then(({ data }) => {
+      setCommentsByPost((prev) => ({ ...prev, [expandedPostId]: (data ?? []) as Comment[] }));
+    });
+    void Promise.resolve(p).catch(() => {});
   }, [expandedPostId, commentsByPost]);
 
   const handleSubmitPost = withAuth(async () => {

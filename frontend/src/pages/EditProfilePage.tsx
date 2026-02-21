@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
+import { supabase, hasSupabaseConfig } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { DIETARY_OPTIONS, type DietaryPreference } from '../types/database';
 import './EditProfilePage.css';
@@ -18,6 +18,10 @@ export function EditProfilePage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!hasSupabaseConfig) {
+      navigate('/', { replace: true });
+      return;
+    }
     if (!user) {
       navigate('/login');
       return;

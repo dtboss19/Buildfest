@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
+import { supabase, hasSupabaseConfig } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { foodShelters } from '../data/shelters';
 import type { UserProfile } from '../types/database';
@@ -58,6 +58,11 @@ export function ProfilePage() {
     }
     if (!targetUserId) {
       setLoading(false);
+      return;
+    }
+    if (!hasSupabaseConfig) {
+      setLoading(false);
+      setError('Profiles require Supabase. This app is in API-only mode — use Food Rescue and Community Chat.');
       return;
     }
     let mounted = true;

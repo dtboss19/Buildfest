@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import { hasApiConfig, apiGetFoodRescue } from '../lib/api';
 import { formatRelativeTime, formatDateTime, formatCountdown } from '../utils/formatDate';
 import { getSeedFoodRescuePosts } from '../data/seedData';
 import type { FoodRescuePost } from '../types/database';
@@ -26,6 +27,19 @@ export function FoodRescuePage() {
       }
     }, 6000);
     (async () => {
+      if (hasApiConfig()) {
+        try {
+          const list = await apiGetFoodRescue();
+          clearTimeoutSafe();
+          if (mounted) setPosts(list.length > 0 ? (list as FoodRescuePost[]) : getSeedFoodRescuePosts());
+        } catch (err) {
+          if (mounted) setError(err instanceof Error ? err.message : String(err));
+          if (mounted) setPosts(getSeedFoodRescuePosts());
+        } finally {
+          if (mounted) setLoading(false);
+        }
+        return;
+      }
       try {
         const result = await Promise.race([
           supabase.from('food_rescue_posts').select('*').in('status', ['available', 'claimed']).order('expiry_time', { ascending: true }),

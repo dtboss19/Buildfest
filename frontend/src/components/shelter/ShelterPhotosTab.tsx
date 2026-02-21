@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { supabase } from '../../lib/supabase';
+import { supabase, hasSupabaseConfig } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { useRequireAuth } from '../../hooks/useRequireAuth';
 import { AnonymousToggle } from '../AnonymousToggle';
@@ -25,6 +25,11 @@ export function ShelterPhotosTab({ shelterId }: ShelterPhotosTabProps) {
   const [lightboxId, setLightboxId] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!hasSupabaseConfig) {
+      setPhotos([]);
+      setLoading(false);
+      return;
+    }
     let mounted = true;
     (async () => {
       try {
