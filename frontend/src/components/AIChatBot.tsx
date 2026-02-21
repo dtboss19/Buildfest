@@ -1,7 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import './AIChatBot.css';
 
-const API_BASE = import.meta.env.VITE_SMS_API_URL ?? (import.meta.env.DEV ? 'http://localhost:5000' : '');
+const rawApi = (import.meta.env.VITE_SMS_API_URL ?? import.meta.env.VITE_API_URL ?? (import.meta.env.DEV ? 'http://localhost:5000' : '')).toString().trim().replace(/\/$/, '') || '';
+const API_BASE = rawApi && !/^https?:\/\//i.test(rawApi) ? `https://${rawApi}` : rawApi;
+const API_READY = Boolean(API_BASE);
 
 type ChatMessage = { role: 'user' | 'assistant'; content: string };
 
@@ -38,7 +40,11 @@ export function AIChatBot() {
 
   const sendMessage = async (text: string) => {
     const trimmed = text.trim();
-    if (!trimmed || !API_BASE) return;
+    if (!trimmed) return;
+    if (!API_READY) {
+      setError('AI assistant is not connected. Set up the assistant service to enable chat.');
+      return;
+    }
     setInput('');
     setError(null);
     setMessages((prev) => [...prev, { role: 'user', content: trimmed }]);
@@ -71,8 +77,6 @@ export function AIChatBot() {
     sendMessage(input);
   };
 
-  if (!API_BASE) return null;
-
   return (
     <>
       <button
@@ -90,7 +94,9 @@ export function AIChatBot() {
             <h2 id="ai-chatbot-title">Ask Common Table</h2>
             <button type="button" className="ai-chatbot-close" onClick={() => setOpen(false)} aria-label="Close">×</button>
           </div>
-          <p className="ai-chatbot-desc">Ask about food shelves, hours, and where to find food near you.</p>
+          <p className="ai-chatbot-desc">
+            {API_READY ? 'Ask about food shelves, hours, and where to find food near you.' : 'Ask about food shelves and hours. Connect the AI assistant service to get live replies.'}
+          </p>
           <div className="ai-chatbot-messages">
             {messages.length === 0 && !loading && (
               <div className="ai-chatbot-suggestions">
@@ -101,6 +107,7 @@ export function AIChatBot() {
                     type="button"
                     className="ai-chatbot-chip"
                     onClick={() => sendMessage(q)}
+                    disabled={!API_READY}
                   >
                     {q}
                   </button>
@@ -126,13 +133,13 @@ export function AIChatBot() {
             <input
               ref={inputRef}
               type="text"
-              placeholder="Ask about food near you…"
+              placeholder={API_READY ? 'Ask about food near you…' : 'Connect assistant to chat…'}
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              disabled={loading}
+              disabled={loading || !API_READY}
               aria-label="Your message"
             />
-            <button type="submit" className="btn btn-primary ai-chatbot-send" disabled={loading || !input.trim()}>
+            <button type="submit" className="btn btn-primary ai-chatbot-send" disabled={loading || !input.trim() || !API_READY}>
               Send
             </button>
           </form>

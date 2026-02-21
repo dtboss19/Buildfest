@@ -1,11 +1,14 @@
 import React from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { Navbar } from './Navbar';
+import { AIChatBot } from './AIChatBot';
 import { hasSupabaseConfig } from '../lib/supabase';
 import { hasApiConfig } from '../lib/api';
 
 export function Layout() {
   const location = useLocation();
+  const isHomePage = location.pathname === '/';
+
   return (
     <div className="app">
       {!hasSupabaseConfig && !hasApiConfig() && (
@@ -19,6 +22,7 @@ export function Layout() {
           <Outlet />
         </div>
       </main>
+      {isHomePage && <AIChatBot />}
     </div>
   );
 }
