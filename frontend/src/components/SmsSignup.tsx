@@ -1,7 +1,8 @@
 import { useState } from 'react';
 
 // Use main backend (Railway) for SMS when merged; or legacy VITE_SMS_API_URL if set
-const SMS_API_URL = (import.meta.env.VITE_SMS_API_URL ?? import.meta.env.VITE_API_URL ?? (import.meta.env.DEV ? 'http://localhost:3001' : '')).toString().trim().replace(/\/$/, '') || '';
+const rawSms = (import.meta.env.VITE_SMS_API_URL ?? import.meta.env.VITE_API_URL ?? (import.meta.env.DEV ? 'http://localhost:3001' : '')).toString().trim().replace(/\/$/, '') || '';
+const SMS_API_URL = rawSms && !/^https?:\/\//i.test(rawSms) ? `https://${rawSms}` : rawSms;
 
 function normalizePhone(value: string): string {
   const digits = value.replace(/\D/g, '');
