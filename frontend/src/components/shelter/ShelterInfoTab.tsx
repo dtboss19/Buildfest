@@ -35,8 +35,18 @@ export function ShelterInfoTab({ shelter }: ShelterInfoTabProps) {
   const bbox = `${shelter.lng - 0.01},${shelter.lat - 0.008},${shelter.lng + 0.01},${shelter.lat + 0.008}`;
   const daySchedule = shelter.schedule.find((e) => e.day === new Date().getDay() as ScheduleEntry['day']);
 
+  const featured = shelter.id === 'keystone'
+    ? { imageUrl: '/shelters/keystone-featured.png', aiDescription: 'A wide variety of fresh fruits and vegetables, baked goods, and canned and packaged pantry staples are available.' }
+    : null;
+
   return (
     <div className="shelter-info-tab">
+      {featured && (
+        <section className="shelter-featured-photo">
+          <img src={featured.imageUrl} alt="Shelter interior" className="shelter-featured-img" />
+          <p className="shelter-featured-ai">AI description: {featured.aiDescription}</p>
+        </section>
+      )}
       <p className="shelter-address">{fullAddress(shelter)}</p>
       <p className="shelter-distance">{shelter.distanceMiles} miles from campus</p>
       {hasSupabaseConfig && user && (
