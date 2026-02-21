@@ -14,7 +14,7 @@ const ANONYMOUS_DISPLAY = 'Anonymous';
 
 export function ShelterChatTab({ shelterId }: ShelterChatTabProps) {
   const { user, profile } = useAuth();
-  const { requireAuthModal, openSignIn, withAuth } = useRequireAuth();
+  const { withAuth } = useRequireAuth();
   const [room, setRoom] = useState<ChatRoom | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -69,10 +69,6 @@ export function ShelterChatTab({ shelterId }: ShelterChatTabProps) {
 
   return (
     <div className="shelter-chat-tab">
-      {requireAuthModal}
-      {!user && (
-        <p className="chat-banner">Sign in to join the conversation</p>
-      )}
       <div className="chat-messages">
         {messages.map((m) => (
           <div key={m.id} className="chat-msg">
@@ -83,7 +79,7 @@ export function ShelterChatTab({ shelterId }: ShelterChatTabProps) {
         ))}
         <div ref={bottomRef} />
       </div>
-      {user ? (
+      {user && (
         <form className="chat-input-form" onSubmit={(e) => { e.preventDefault(); sendMessage()(); }}>
           <AnonymousToggle checked={isAnonymous} onChange={setIsAnonymous} label="Send anonymously" />
           <div className="chat-input-row">
@@ -91,8 +87,6 @@ export function ShelterChatTab({ shelterId }: ShelterChatTabProps) {
             <button type="submit" className="btn btn-primary" disabled={sending || !content.trim()}>Send</button>
           </div>
         </form>
-      ) : (
-        <button type="button" className="btn btn-primary" onClick={openSignIn}>Sign in to chat</button>
       )}
     </div>
   );

@@ -15,7 +15,7 @@ const ANONYMOUS_AVATAR = 'https://api.dicebear.com/7.x/initials/svg?seed=Anonymo
 export function ProfilePage() {
   const { userId } = useParams();
   const navigate = useNavigate();
-  const { user, profile: myProfile, refreshProfile } = useAuth();
+  const { user, profile: myProfile, refreshProfile, ensureMyProfile } = useAuth();
   const isMe = userId === 'me' || (user && userId === user.id);
   const targetUserId = isMe ? user?.id : userId;
 
@@ -33,9 +33,30 @@ export function ProfilePage() {
     return data as UserProfile;
   }, []);
 
+  const buildFallbackProfileFromUser = useCallback((u: { id: string; email?: string | null; user_metadata?: Record<string, unknown> }): UserProfile => {
+    const displayName =
+      (u.user_metadata?.display_name as string)?.trim() ||
+      (u.email ? u.email.split('@')[0] : '') ||
+      'User';
+    return {
+      id: u.id,
+      user_id: u.id,
+      display_name: displayName,
+      avatar_url: null,
+      bio: null,
+      dietary_preferences: [],
+      saved_shelters: [],
+      is_private: false,
+      created_at: new Date().toISOString(),
+    };
+  }, []);
+
   useEffect(() => {
+    if (userId === 'me') {
+      navigate('/', { replace: true });
+      return;
+    }
     if (!targetUserId) {
-      if (!user && userId === 'me') navigate('/login');
       setLoading(false);
       return;
     }
@@ -60,11 +81,29 @@ export function ProfilePage() {
         }
       } catch (e) {
         if (mounted) {
-          if (isMe) {
-            await refreshProfile();
-            if (mounted) setError(null);
+          const msg = e instanceof Error ? e.message : 'Failed to load profile';
+          const isLockError =
+            msg.includes('LockManager') ||
+            msg.includes('auth-token') ||
+            msg.includes('timed out') ||
+            msg.includes('NavigatorLockAcquireTimeoutError');
+          if (isMe && user) {
+            let resolved: UserProfile | null = null;
+            try {
+              resolved = await ensureMyProfile();
+            } catch {
+              // use fallback below
+            }
+            if (mounted && resolved) {
+              setProfile(resolved);
+              setError(null);
+            } else if (mounted) {
+              setProfile(buildFallbackProfileFromUser(user));
+              setError(isLockError ? 'Session busy. Could not load from server. You can retry below.' : null);
+            }
+            if (mounted && !resolved) refreshProfile().catch(() => {});
           } else {
-            setError(e instanceof Error ? e.message : 'Failed to load profile');
+            setError(isLockError ? 'Session busy. Please refresh the page or try again in a moment.' : msg);
           }
         }
       } finally {
@@ -72,13 +111,14 @@ export function ProfilePage() {
       }
     })();
     return () => { mounted = false; };
-  }, [targetUserId, isMe, fetchProfile, userId, user, navigate, refreshProfile]);
+  }, [targetUserId, isMe, fetchProfile, userId, user, navigate, refreshProfile, ensureMyProfile, buildFallbackProfileFromUser]);
 
   // For /profile/me, prefer Auth context profile so we never show "Profile not found" when context has it
   const displayProfile = (isMe && myProfile) ? myProfile : profile;
+  const showRetryBanner = Boolean(error && displayProfile && isMe);
   if (!targetUserId && !user) return null;
   if (loading && !displayProfile) return <div className="page-loading">Loading profile…</div>;
-  if (error) return <div className="page-error">{error}</div>;
+  if (error && !displayProfile) return <div className="page-error">{error}</div>;
   if (!displayProfile) return <div className="page-error">Profile not found</div>;
 
   const isPrivateView = !isMe && displayProfile.is_private;
@@ -87,18 +127,31 @@ export function ProfilePage() {
   const avatarUrl = displayProfile.avatar_url || (isPrivateView ? ANONYMOUS_AVATAR : undefined);
   const showContributions = isMe || !displayProfile.is_private;
 
+  const handleRetryProfile = () => {
+    setError(null);
+    setLoading(true);
+    ensureMyProfile()
+      .then((p) => {
+        if (p) setProfile(p);
+        return refreshProfile();
+      })
+      .finally(() => setLoading(false));
+  };
+
   return (
     <div className="profile-page">
+      {showRetryBanner && (
+        <div className="profile-retry-banner">
+          <span>{error}</span>
+          <button type="button" className="btn btn-primary" onClick={handleRetryProfile}>
+            Retry
+          </button>
+        </div>
+      )}
       <header className="profile-header">
         <img src={avatarUrl || ANONYMOUS_AVATAR} alt="" className="profile-avatar" />
         <div className="profile-meta">
-          <h1 className="profile-name">
-            {isMe && displayName === 'Set your name' ? (
-              <Link to="/profile/me/edit">{displayName}</Link>
-            ) : (
-              displayName
-            )}
-          </h1>
+          <h1 className="profile-name">{displayName}</h1>
           {!isPrivateView && displayProfile.bio && <p className="profile-bio">{displayProfile.bio}</p>}
           {!isPrivateView && displayProfile.dietary_preferences?.length > 0 && (
             <div className="profile-dietary">
@@ -108,9 +161,6 @@ export function ProfilePage() {
             </div>
           )}
           <p className="profile-joined">Joined {new Date(displayProfile.created_at).toLocaleDateString()}</p>
-          {isMe && (
-            <Link to="/profile/me/edit" className="btn btn-primary">Edit profile</Link>
-          )}
         </div>
       </header>
 

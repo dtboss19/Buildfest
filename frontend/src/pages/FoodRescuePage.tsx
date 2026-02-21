@@ -1,8 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { useAuth } from '../contexts/AuthContext';
-import { useRequireAuth } from '../hooks/useRequireAuth';
 import { formatRelativeTime, formatDateTime, formatCountdown } from '../utils/formatDate';
 import { getSeedFoodRescuePosts } from '../data/seedData';
 import type { FoodRescuePost } from '../types/database';
@@ -11,8 +9,6 @@ import './FoodRescuePage.css';
 type FilterType = 'all' | 'available' | 'foodbank' | 'community';
 
 export function FoodRescuePage() {
-  const { user } = useAuth();
-  const { requireAuthModal, openSignIn, withAuth } = useRequireAuth();
   const [posts, setPosts] = useState<FoodRescuePost[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -27,31 +23,15 @@ export function FoodRescuePage() {
         .in('status', ['available', 'claimed'])
         .order('expiry_time', { ascending: true });
       if (!mounted) return;
-      setError(err?.message ?? null);
+      const raw = err?.message ?? null;
+      const isLockError = raw?.includes('LockManager') || raw?.includes('auth-token') || raw?.includes('timed out');
+      setError(isLockError ? null : raw);
       const list = (data ?? []) as FoodRescuePost[];
       setPosts(list.length > 0 ? list : getSeedFoodRescuePosts());
       setLoading(false);
     })();
     return () => { mounted = false; };
   }, []);
-
-  const handleClaim = (postId: string) => withAuth(async () => {
-    if (!user) return;
-    if (postId.startsWith('seed-')) return; // seed post, no-op
-    const { data: post } = await supabase.from('food_rescue_posts').select('user_id').eq('id', postId).single();
-    await supabase.from('food_rescue_posts').update({ status: 'claimed', claimed_by: user.id, claimed_at: new Date().toISOString() }).eq('id', postId);
-    setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, status: 'claimed' as const, claimed_by: user.id, claimed_at: new Date().toISOString() } : p)));
-    if (post?.user_id) {
-      await supabase.from('notifications').insert({
-        user_id: post.user_id,
-        type: 'food_rescue_claimed',
-        title: 'Your food rescue post was claimed',
-        body: 'Someone claimed your food rescue post.',
-        link_url: '/food-rescue',
-        reference_id: postId,
-      });
-    }
-  });
 
   const filtered = posts.filter((p) => {
     if (filter === 'all') return true;
@@ -75,7 +55,6 @@ export function FoodRescuePage() {
 
   return (
     <div className="food-rescue-page">
-      {requireAuthModal}
       <section className="food-rescue-hero">
         <p className="food-rescue-hero-text">Have food to share? Post it here and connect with people who need it.</p>
         <div className="food-rescue-hero-buttons">
@@ -135,16 +114,6 @@ export function FoodRescuePage() {
                   <span className={`badge badge-${p.pickup_type}`}>{p.pickup_type}</span>
                   <span className={`badge badge-status-${p.status}`}>{p.status}</span>
                 </div>
-                {p.status === 'available' && !countdown.expired && (
-                  user ? (
-                    <button type="button" className="btn btn-primary" onClick={() => handleClaim(p.id)()}>Claim</button>
-                  ) : (
-                    <button type="button" className="btn btn-primary" onClick={openSignIn}>Sign in to claim</button>
-                  )
-                )}
-                {p.status === 'claimed' && (
-                  <p className="claimed-by">Claimed by Anonymous Community Member</p>
-                )}
               </div>
             </li>
           );

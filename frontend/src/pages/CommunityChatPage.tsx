@@ -14,7 +14,7 @@ const PREVIEW_MESSAGE_COUNT = 3;
 
 export function CommunityChatPage() {
   const { user } = useAuth();
-  const { requireAuthModal, openSignIn, withAuth } = useRequireAuth();
+  const { withAuth } = useRequireAuth();
   const [rooms, setRooms] = useState<ChatRoom[]>([]);
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -26,7 +26,7 @@ export function CommunityChatPage() {
     let mounted = true;
     (async () => {
       try {
-        const { data } = await supabase.from('chat_rooms').select('*').eq('type', 'topic').order('name');
+        const { data } = await supabase.from('chat_rooms').select('*').eq('type', 'topic').order('name', { ascending: true });
         if (!mounted) return;
         const list = (data ?? []) as ChatRoom[];
         setRooms(list.length > 0 ? list : getSeedChatRooms());
@@ -51,8 +51,13 @@ export function CommunityChatPage() {
       setMessages(getSeedChatMessagesByRoomId(selectedRoomId));
       return;
     }
-    supabase.from('chat_messages').select('*').eq('room_id', selectedRoomId).order('created_at').then(({ data }) => {
+    supabase.from('chat_messages').select('*').eq('room_id', selectedRoomId).order('created_at', { ascending: true }).then(({ data }) => {
       setMessages((data ?? []) as ChatMessage[]);
+    }).catch((err) => {
+      // #region agent log
+      fetch('http://127.0.0.1:7805/ingest/31f8c09b-0f5d-4b67-a668-61f689c5aeb4', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'f0ee74' }, body: JSON.stringify({ sessionId: 'f0ee74', location: 'CommunityChatPage.tsx:chat_messages', message: 'rejection', data: { err: String(err) }, hypothesisId: 'H2', timestamp: Date.now() }) }).catch(() => {});
+      // #endregion
+      setMessages([]);
     });
     const channel = supabase.channel(`room:${selectedRoomId}`).on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `room_id=eq.${selectedRoomId}` }, (payload) => {
       setMessages((prev) => [...prev, payload.new as ChatMessage]);
@@ -81,9 +86,7 @@ export function CommunityChatPage() {
 
   return (
     <div className="community-chat-page">
-      {requireAuthModal}
       <h1>Community chat</h1>
-      {!user && <p className="chat-banner">Sign in to join the conversation</p>}
       <div className="chat-layout">
         <aside className="chat-rooms-sidebar">
           {rooms.map((r) => {
@@ -124,20 +127,14 @@ export function CommunityChatPage() {
                   </div>
                 ))}
               </div>
-              {user ? (
-                selectedRoomId.startsWith('seed-') ? (
-                  <div className="chat-signin-bar">Seed demo room — sign in and use a real room to send messages.</div>
-                ) : (
-                  <form className="chat-input-form" onSubmit={(e) => { e.preventDefault(); sendMessage()(); }}>
-                    <AnonymousToggle checked={isAnonymous} onChange={setIsAnonymous} label="Send anonymously" />
-                    <input type="text" placeholder="Type a message…" value={content} onChange={(e) => setContent(e.target.value)} />
-                    <button type="submit" className="btn btn-primary">Send</button>
-                  </form>
-                )
+              {selectedRoomId.startsWith('seed-') ? (
+                <div className="chat-signin-bar">Seed demo room — use a real room to send messages.</div>
               ) : (
-                <div className="chat-signin-bar">
-                  <button type="button" className="btn btn-primary" onClick={openSignIn}>Sign in to reply</button>
-                </div>
+                <form className="chat-input-form" onSubmit={(e) => { e.preventDefault(); sendMessage()(); }}>
+                  <AnonymousToggle checked={isAnonymous} onChange={setIsAnonymous} label="Send anonymously" />
+                  <input type="text" placeholder="Type a message…" value={content} onChange={(e) => setContent(e.target.value)} />
+                  <button type="submit" className="btn btn-primary">Send</button>
+                </form>
               )}
             </>
           )}

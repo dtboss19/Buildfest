@@ -2,9 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { Layout } from './components/Layout';
 import { HomePage } from './pages/HomePage';
-import { LoginPage } from './pages/LoginPage';
 import { ProfilePage } from './pages/ProfilePage';
-import { EditProfilePage } from './pages/EditProfilePage';
 import { ShelterPage } from './pages/ShelterPage';
 import { FoodRescuePage } from './pages/FoodRescuePage';
 import { FoodRescueNewPage } from './pages/FoodRescueNewPage';
@@ -19,9 +17,6 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Layout />}>
             <Route index element={<HomePage />} />
-            <Route path="login" element={<LoginPage />} />
-            <Route path="profile/me" element={<ProfilePage />} />
-            <Route path="profile/me/edit" element={<EditProfilePage />} />
             <Route path="profile/:userId" element={<ProfilePage />} />
             <Route path="shelter/:id" element={<ShelterPage />} />
             <Route path="food-rescue" element={<FoodRescuePage />} />

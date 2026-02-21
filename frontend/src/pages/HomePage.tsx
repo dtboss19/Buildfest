@@ -267,7 +267,7 @@ export function HomePage() {
                 <div className="home-rescue-card-body">
                   <h3 className="home-rescue-card-title">{r.event_name}</h3>
                   <p className="home-rescue-card-countdown">{formatCountdown(r.expiry_time)}</p>
-                  <Link to="/food-rescue" className="home-rescue-card-claim">Claim</Link>
+                  <Link to="/food-rescue" className="home-rescue-card-claim">View</Link>
                 </div>
               </div>
             ))}

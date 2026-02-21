@@ -996,6 +996,11 @@
   text-align: center;
 }
 
+.login-page-checking {
+  color: var(--textMuted);
+  margin: 2rem 0;
+}
+
 .login-page-hint {
   margin: 1rem 0 0;
   color: var(--textMuted);

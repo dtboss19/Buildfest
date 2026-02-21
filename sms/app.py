@@ -16,6 +16,17 @@ from twilio.rest import Client
 
 load_dotenv()
 
+# #region agent log
+def _debug_log(location: str, message: str, data: dict, hypothesis_id: str) -> None:
+    import json as _j
+    log_path = Path(__file__).resolve().parent.parent / "debug-f0ee74.log"
+    try:
+        with open(log_path, "a", encoding="utf-8") as f:
+            f.write(_j.dumps({"sessionId": "f0ee74", "location": location, "message": message, "data": data, "hypothesisId": hypothesis_id, "timestamp": __import__("time").time() * 1000}) + "\n")
+    except Exception:
+        pass
+# #endregion
+
 app = Flask(__name__)
 CORS(app)
 DB_PATH = Path(__file__).resolve().parent / "subscribers.db"
@@ -50,8 +61,16 @@ def normalize_phone(raw: str) -> str | None:
 
 
 def load_shelters():
-    with open(SHELTERS_PATH, encoding="utf-8") as f:
-        return json.load(f)
+    # #region agent log
+    try:
+        with open(SHELTERS_PATH, encoding="utf-8") as f:
+            data = json.load(f)
+        _debug_log("load_shelters", "ok", {"path": str(SHELTERS_PATH)}, "H1")
+        return data
+    except Exception as e:
+        _debug_log("load_shelters", "error", {"error": str(e), "path": str(SHELTERS_PATH)}, "H1")
+        raise
+    # #endregion
 
 
 def open_today(shelters: list, day: int) -> list:
@@ -89,26 +108,34 @@ def _format_slots(slots: list) -> str:
 
 
 def build_daily_message(day: int) -> str:
-    shelters = load_shelters()
-    open_list = open_today(shelters, day)[:5]
-    day_names = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
-    day_name = day_names[day]
-    if not open_list:
-        return f"Common Table: No locations open {day_name}. Call 1-888-711-1151. Reply STOP to unsubscribe."
-    lines = [f"Food shelves open {day_name} (near campus):"]
-    for s in open_list:
-        entry = next((e for e in s["schedule"] if e["day"] == day), None)
-        hours = _format_slots(entry.get("slots", [])) if entry else ""
-        note = f" ({entry['note']})" if entry and entry.get("note") else ""
-        lines.append(f"• {s['name']} ({s['distanceMiles']} mi)")
-        lines.append(f"  {s.get('address', '')}")
-        if hours:
-            lines.append(f"  Hours: {hours}{note}")
-        lines.append(f"  Req: {s.get('eligibility', 'Call for details.')}")
-        if s.get("contact"):
-            lines.append(f"  Call: {s['contact']}")
-    lines.append("Reply STOP to unsubscribe.")
-    return "\n".join(lines)
+    try:
+        shelters = load_shelters()
+    except Exception as e:
+        _debug_log("build_daily_message", "load_shelters_failed", {"error": str(e)}, "H1")
+        return "Common Table: Alerts temporarily unavailable. Call 1-888-711-1151. Reply STOP to unsubscribe."
+    try:
+        open_list = open_today(shelters, day)[:5]
+        day_names = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+        day_name = day_names[day]
+        if not open_list:
+            return f"Common Table: No locations open {day_name}. Call 1-888-711-1151. Reply STOP to unsubscribe."
+        lines = [f"Food shelves open {day_name} (near campus):"]
+        for s in open_list:
+            entry = next((e for e in s["schedule"] if e["day"] == day), None)
+            hours = _format_slots(entry.get("slots", [])) if entry else ""
+            note = f" ({entry['note']})" if entry and entry.get("note") else ""
+            lines.append(f"• {s['name']} ({s['distanceMiles']} mi)")
+            lines.append(f"  {s.get('address', '')}")
+            if hours:
+                lines.append(f"  Hours: {hours}{note}")
+            lines.append(f"  Req: {s.get('eligibility', 'Call for details.')}")
+            if s.get("contact"):
+                lines.append(f"  Call: {s['contact']}")
+        lines.append("Reply STOP to unsubscribe.")
+        return "\n".join(lines)
+    except Exception as e:
+        _debug_log("build_daily_message", "format_failed", {"error": str(e)}, "H1")
+        return "Common Table: Alerts temporarily unavailable. Call 1-888-711-1151. Reply STOP to unsubscribe."
 
 
 def send_sms(to: str, body: str) -> bool:
@@ -125,16 +152,28 @@ def send_sms(to: str, body: str) -> bool:
 def run_daily_send(day: int | None = None) -> tuple[int, int]:
     """Send today's digest to all subscribers. Returns (subscriber_count, sent_count)."""
     from datetime import datetime
-    if day is None:
-        day = (datetime.now().weekday() + 1) % 7  # Sun=0 .. Sat=6
-    body = build_daily_message(day)
-    with get_db() as conn:
-        rows = conn.execute("SELECT phone FROM subscribers").fetchall()
-    sent = 0
-    for row in rows:
-        if send_sms(row["phone"], body):
-            sent += 1
-    return (len(rows), sent)
+    # #region agent log
+    _debug_log("run_daily_send", "entry", {"day_arg": day}, "H4")
+    # #endregion
+    try:
+        if day is None:
+            day = (datetime.now().weekday() + 1) % 7  # Sun=0 .. Sat=6
+        body = build_daily_message(day)
+        with get_db() as conn:
+            rows = conn.execute("SELECT phone FROM subscribers").fetchall()
+        sent = 0
+        for row in rows:
+            if send_sms(row["phone"], body):
+                sent += 1
+        # #region agent log
+        _debug_log("run_daily_send", "ok", {"subscribers": len(rows), "sent": sent}, "H4")
+        # #endregion
+        return (len(rows), sent)
+    except Exception as e:
+        # #region agent log
+        _debug_log("run_daily_send", "error", {"error": str(e)}, "H4")
+        # #endregion
+        raise
 
 
 @app.route("/api/subscribe", methods=["POST"])

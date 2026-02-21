@@ -10,7 +10,7 @@ import './FoodRescueNewPage.css';
 export function FoodRescueNewPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { withAuth, requireAuthModal, openSignIn } = useRequireAuth();
+  const { withAuth } = useRequireAuth();
   const [eventName, setEventName] = useState('');
   const [description, setDescription] = useState('');
   const [quantity, setQuantity] = useState('');
@@ -60,13 +60,7 @@ export function FoodRescueNewPage() {
   });
 
   if (!user) {
-    return (
-      <div className="food-rescue-new-page">
-        {requireAuthModal}
-        <p>Sign in to create a food rescue post.</p>
-        <button type="button" className="btn btn-primary" onClick={openSignIn}>Sign in</button>
-      </div>
-    );
+    return <div className="food-rescue-new-page"><p className="loading">Loading…</p></div>;
   }
 
   return (

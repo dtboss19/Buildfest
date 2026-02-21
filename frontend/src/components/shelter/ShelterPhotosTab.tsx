@@ -15,7 +15,7 @@ const ANONYMOUS_DISPLAY = 'Anonymous Community Member';
 
 export function ShelterPhotosTab({ shelterId }: ShelterPhotosTabProps) {
   const { user, profile } = useAuth();
-  const { withAuth, requireAuthModal, openSignIn } = useRequireAuth();
+  const { withAuth } = useRequireAuth();
   const [photos, setPhotos] = useState<ShelterPhoto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -121,9 +121,6 @@ export function ShelterPhotosTab({ shelterId }: ShelterPhotosTabProps) {
             {uploading ? 'Uploading…' : 'Upload photo'}
           </button>
         </div>
-      )}
-      {!user && (
-        <button type="button" className="btn btn-primary" onClick={openSignIn}>Sign in to upload</button>
       )}
       <div className="photos-grid">
         {photos.map((ph) => (

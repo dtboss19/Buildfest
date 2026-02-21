@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { DIETARY_OPTIONS, type DietaryPreference } from '../types/database';
 import './SignInModal.css';
@@ -18,6 +18,12 @@ export function SignInModal({ isOpen, onClose, title = 'Sign in to contribute' }
   const [displayName, setDisplayName] = useState('');
   const [dietaryPreferences, setDietaryPreferences] = useState<DietaryPreference[]>([]);
 
+  useEffect(() => {
+    if (isOpen) setError(null);
+  }, [isOpen, setError]);
+
+  const clearError = () => setError(null);
+
   const reset = () => {
     setError(null);
     setEmail('');
@@ -32,6 +38,11 @@ export function SignInModal({ isOpen, onClose, title = 'Sign in to contribute' }
     onClose();
   };
 
+  const toggleMode = (newMode: 'signin' | 'signup') => {
+    setMode(newMode);
+    setError(null);
+  };
+
   const toggleDietary = (d: DietaryPreference) => {
     setDietaryPreferences((prev) =>
       prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d]
@@ -41,9 +52,12 @@ export function SignInModal({ isOpen, onClose, title = 'Sign in to contribute' }
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { error: err } = await signIn(email, password);
-    setLoading(false);
-    if (!err) handleClose();
+    try {
+      const { error: err } = await signIn(email, password);
+      if (!err) handleClose();
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSignUp = async (e: React.FormEvent) => {
@@ -53,12 +67,15 @@ export function SignInModal({ isOpen, onClose, title = 'Sign in to contribute' }
       return;
     }
     setLoading(true);
-    const { error: err } = await signUp(email, password, {
-      displayName: displayName.trim(),
-      dietaryPreferences: dietaryPreferences.length ? dietaryPreferences : undefined,
-    });
-    setLoading(false);
-    if (!err) handleClose();
+    try {
+      const { error: err } = await signUp(email, password, {
+        displayName: displayName.trim(),
+        dietaryPreferences: dietaryPreferences.length ? dietaryPreferences : undefined,
+      });
+      if (!err) handleClose();
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (!isOpen) return null;
@@ -86,7 +103,7 @@ export function SignInModal({ isOpen, onClose, title = 'Sign in to contribute' }
                 id="signin-email"
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => { setEmail(e.target.value); clearError(); }}
                 required
                 autoComplete="email"
                 disabled={loading}
@@ -96,7 +113,7 @@ export function SignInModal({ isOpen, onClose, title = 'Sign in to contribute' }
                 id="signin-password"
                 type="password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => { setPassword(e.target.value); clearError(); }}
                 required
                 autoComplete="current-password"
                 disabled={loading}
@@ -112,7 +129,7 @@ export function SignInModal({ isOpen, onClose, title = 'Sign in to contribute' }
                 id="signup-display"
                 type="text"
                 value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
+                onChange={(e) => { setDisplayName(e.target.value); clearError(); }}
                 required
                 placeholder="How others see you"
                 disabled={loading}
@@ -122,7 +139,7 @@ export function SignInModal({ isOpen, onClose, title = 'Sign in to contribute' }
                 id="signup-email"
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => { setEmail(e.target.value); clearError(); }}
                 required
                 autoComplete="email"
                 disabled={loading}
@@ -132,7 +149,7 @@ export function SignInModal({ isOpen, onClose, title = 'Sign in to contribute' }
                 id="signup-password"
                 type="password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => { setPassword(e.target.value); clearError(); }}
                 required
                 minLength={6}
                 autoComplete="new-password"
@@ -162,14 +179,14 @@ export function SignInModal({ isOpen, onClose, title = 'Sign in to contribute' }
             {mode === 'signin' ? (
               <>
                 Don’t have an account?{' '}
-                <button type="button" className="link-button" onClick={() => setMode('signup')}>
+                <button type="button" className="link-button" onClick={() => toggleMode('signup')}>
                   Sign up
                 </button>
               </>
             ) : (
               <>
                 Already have an account?{' '}
-                <button type="button" className="link-button" onClick={() => setMode('signin')}>
+                <button type="button" className="link-button" onClick={() => toggleMode('signin')}>
                   Sign in
                 </button>
               </>

@@ -59,14 +59,34 @@ See `sms/README.md` for API details and Twilio setup.
 
 ## Community layer (Supabase)
 
-The app includes a full social community layer: auth, profiles, shelter photos, community posts, chat, food rescue, and notifications.
+The app is **open access with no login page**. Visitors get an anonymous session automatically so they can browse, chat, post, and use food rescue without creating an account.
 
 1. **Create a Supabase project** at [supabase.com](https://supabase.com).
-2. **Run the schema**: In the Supabase SQL Editor, run the contents of `supabase/migrations/001_initial_schema.sql` (creates tables, RLS, Realtime for `chat_messages`, trigger for new user profiles, seed topic chat rooms).
-3. **Create storage buckets** in Dashboard → Storage: `avatars`, `shelter-photos`, `food-rescue-photos` (all public). Add policies so authenticated users can upload; see migration comments.
-4. **Env**: In `frontend/`, copy `.env.example` to `.env` and set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
+2. **Enable Anonymous sign-ins**: In Dashboard → Authentication → Providers, turn on **Anonymous sign-ins**.
+3. **Run the schema**: In the Supabase SQL Editor, run the contents of `supabase/migrations/001_initial_schema.sql` (creates tables, RLS, Realtime for `chat_messages`, trigger for new user profiles, seed topic chat rooms).
+4. **Create storage buckets** in Dashboard → Storage: `avatars`, `shelter-photos`, `food-rescue-photos` (all public). Add policies so authenticated users can upload; see migration comments.
+5. **Env**: In `frontend/`, copy `.env.example` to `.env` and set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
 
-After that, the frontend can use sign up/sign in, profiles, shelter pages with photos/community/chat, food rescue, community feed, and notifications.
+After that, the frontend works with no sign-up or sign-in: shelter pages, photos, community posts, chat, and food rescue are all available to everyone.
+
+### Supabase timing out or login stuck?
+
+If the app hangs on "Loading…" or "Signing in…" and then shows a timeout, Supabase is not responding in time. Common causes:
+
+1. **Project paused (free tier)**  
+   Free projects pause after about 7 days of inactivity. In the [Supabase Dashboard](https://supabase.com/dashboard), open your project. If you see **Project is paused**, click **Restore project**. Wait a few minutes and try again.
+
+2. **Wrong URL or anon key**  
+   - **URL**: Must be exactly `https://YOUR_PROJECT_REF.supabase.co` (no trailing slash). Get it from Dashboard → Project Settings → API → Project URL.  
+   - **Anon key**: Use the **anon** / **public** key from the same API page (long JWT starting with `eyJ...`). Do not use the `service_role` key in the frontend.
+
+3. **Network / firewall**  
+   If you’re on a strict network or VPN, requests to `*.supabase.co` may be blocked or delayed. Try another network or disable VPN to test.
+
+4. **Browser storage**  
+   In some browsers or private mode, auth storage can lock and cause slow or failed session checks. Try a normal window or another browser.
+
+The app now runs a short connectivity check on load. If Supabase is unreachable, you’ll see a message like "Supabase is not responding" or "Cannot reach Supabase" instead of an endless spinner.
 
 ### Fixing "email rate limit exceeded" / sign-up blocked
 
