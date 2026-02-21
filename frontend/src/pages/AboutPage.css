@@ -11,15 +11,6 @@
   text-align: center;
 }
 
-@media (max-width: 640px) {
-  .about-hero { padding: 2.5rem 1rem; }
-  .about-hero-title { font-size: 1.75rem; }
-  .about-hero-tagline { font-size: 1.1rem; }
-  .about-section { padding: 2.5rem 1rem; }
-  .about-section-title { font-size: 1.5rem; margin-bottom: 1.5rem; }
-  .about-inner { padding: 0; }
-}
-
 .about-hero-inner {
   max-width: 720px;
   margin: 0 auto;

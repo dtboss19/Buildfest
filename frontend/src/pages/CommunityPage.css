@@ -1,9 +1,5 @@
 .community-page { max-width: 900px; margin: 0 auto; padding: 1.5rem; }
 .community-page h1 { margin: 0 0 1rem; }
-@media (max-width: 640px) {
-  .community-page { padding: 1rem; }
-  .community-page h1 { font-size: 1.35rem; }
-}
 
 .community-layout {
   display: flex;
@@ -51,12 +47,7 @@
 .empty-state { text-align: center; padding: 2rem; color: var(--textMuted); }
 .empty-state-icon { font-size: 2.5rem; display: block; margin-bottom: 0.5rem; }
 
-@media (max-width: 640px) {
-  .community-sidebar { flex: 1 1 100%; max-width: none; }
-}
 @media (max-width: 390px) {
-  .community-page { padding: 0.75rem; }
   .community-layout { flex-direction: column; }
   .community-sidebar { flex: 1 1 auto; }
-  .feed-item { flex-direction: column; gap: 0.5rem; }
 }
