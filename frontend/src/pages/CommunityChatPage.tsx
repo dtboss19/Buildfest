@@ -9,7 +9,6 @@ import type { ChatRoom, ChatMessage } from '../types/database';
 import './CommunityChatPage.css';
 
 const ANONYMOUS_DISPLAY = 'Anonymous';
-const FAKE_MEMBER_COUNT = 24;
 const PREVIEW_MESSAGE_COUNT = 3;
 
 export function CommunityChatPage() {
@@ -23,34 +22,26 @@ export function CommunityChatPage() {
   const [loading, setLoading] = useState(true);
   const [sendError, setSendError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
+  const [roomsError, setRoomsError] = useState<string | null>(null);
 
   const useApi = hasApiConfig();
 
   useEffect(() => {
     let mounted = true;
-    let timeoutId: number = 0;
-    const clearTimeoutSafe = () => { if (timeoutId) window.clearTimeout(timeoutId); timeoutId = 0; };
-    timeoutId = window.setTimeout(() => {
-      timeoutId = 0;
-      if (mounted) {
-        setRooms(getSeedChatRooms());
-        setSelectedRoomId(getSeedChatRooms()[0].id);
-        setLoading(false);
-      }
-    }, 5000);
     (async () => {
       if (useApi) {
+        setRoomsError(null);
         try {
           const list = await apiGetChatRooms();
-          clearTimeoutSafe();
           if (!mounted) return;
-          setRooms(list.length > 0 ? (list as ChatRoom[]) : getSeedChatRooms());
-          if (list.length > 0) setSelectedRoomId(list[0].id);
-          else setSelectedRoomId(getSeedChatRooms()[0].id);
-        } catch {
+          const roomList = (list ?? []) as ChatRoom[];
+          setRooms(roomList);
+          setSelectedRoomId(roomList.length > 0 ? roomList[0].id : null);
+        } catch (e) {
           if (mounted) {
-            setRooms(getSeedChatRooms());
-            setSelectedRoomId(getSeedChatRooms()[0].id);
+            setRooms([]);
+            setSelectedRoomId(null);
+            setRoomsError(e instanceof Error ? e.message : 'Unable to load chat rooms.');
           }
         } finally {
           if (mounted) setLoading(false);
@@ -60,14 +51,12 @@ export function CommunityChatPage() {
       try {
         const { data } = await supabase.from('chat_rooms').select('*').eq('type', 'topic').order('name', { ascending: true });
         if (!mounted) return;
-        clearTimeoutSafe();
         const list = (data ?? []) as ChatRoom[];
         setRooms(list.length > 0 ? list : getSeedChatRooms());
-        if (list.length > 0 && !selectedRoomId) setSelectedRoomId(list[0].id);
-        else if (list.length === 0) setSelectedRoomId(getSeedChatRooms()[0].id);
+        if (list.length > 0) setSelectedRoomId(list[0].id);
+        else setSelectedRoomId(getSeedChatRooms()[0].id);
       } catch {
         if (mounted) {
-          clearTimeoutSafe();
           setRooms(getSeedChatRooms());
           setSelectedRoomId(getSeedChatRooms()[0].id);
         }
@@ -75,7 +64,7 @@ export function CommunityChatPage() {
         if (mounted) setLoading(false);
       }
     })();
-    return () => { mounted = false; clearTimeoutSafe(); };
+    return () => { mounted = false; };
   }, [useApi]);
 
   const fetchApiMessages = useCallback(async (roomId: string) => {
@@ -193,6 +182,8 @@ export function CommunityChatPage() {
   };
 
   if (loading) return <div className="page-loading">Loading…</div>;
+  if (roomsError) return <div className="community-chat-page"><h1>Community chat</h1><p className="error">{roomsError}</p></div>;
+  if (useApi && rooms.length === 0) return <div className="community-chat-page"><h1>Community chat</h1><p className="loading">No chat rooms available.</p></div>;
 
   return (
     <div className="community-chat-page">
@@ -210,7 +201,7 @@ export function CommunityChatPage() {
                 onClick={() => setSelectedRoomId(r.id)}
               >
                 <span className="chat-room-name">{r.name}</span>
-                <span className="chat-room-meta"> · {FAKE_MEMBER_COUNT} members</span>
+                {!r.id.startsWith('seed-') && <span className="chat-room-meta"> · Community</span>}
                 {unread > 0 && <span className="chat-room-unread">{unread}</span>}
                 {preview.length > 0 && (
                   <div className="chat-room-preview">
@@ -237,8 +228,8 @@ export function CommunityChatPage() {
                   </div>
                 ))}
               </div>
-              {selectedRoomId.startsWith('seed-') ? (
-                <div className="chat-signin-bar">Seed demo room — use a real room to send messages.</div>
+              {selectedRoomId.startsWith('seed-') && !useApi ? (
+                <div className="chat-signin-bar">Sign in to send messages in this room.</div>
               ) : (
                 <form className="chat-input-form" onSubmit={handleSendMessage}>
                   {sendError && <p className="chat-send-error">{sendError}</p>}
