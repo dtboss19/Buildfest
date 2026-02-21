@@ -27,6 +27,7 @@ export interface FoodShelter {
   contact?: string;
   website?: string;
   notes?: string;
+  dietary_options?: string[];
 }
 
 export interface FoodDetectionItem {
