@@ -82,6 +82,10 @@ The app is **open access with no login page**. Visitors get an anonymous session
 
 After that, the frontend works with no sign-up or sign-in: shelter pages, photos, community posts, chat, and food rescue are all available to everyone.
 
+### 422 when sending chat or creating a post ("Cannot log you in")
+
+**Anonymous sign-ins are disabled.** Enable them: [Supabase Dashboard](https://supabase.com/dashboard) → your project → **Authentication** → **Providers** → turn on **Anonymous sign-ins**. Then try again.
+
 ### Supabase timing out or login stuck?
 
 If the app hangs on "Loading…" or "Signing in…" and then shows a timeout, Supabase is not responding in time. Common causes:

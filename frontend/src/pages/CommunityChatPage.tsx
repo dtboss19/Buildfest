@@ -98,9 +98,14 @@ export function CommunityChatPage() {
     setSending(true);
     let currentUser = user;
     if (!currentUser) {
-      currentUser = await ensureAnonymousSession();
+      const result = await ensureAnonymousSession();
+      currentUser = result.user;
       if (!currentUser) {
-        setSendError('Unable to sign you in. Please try again.');
+        setSendError(
+          result.error && /anonymous|disabled|422|sign.?in/i.test(result.error)
+            ? 'Anonymous sign-in is not enabled for this app. The project admin must enable it in Supabase: Dashboard → Authentication → Providers → Anonymous sign-ins.'
+            : (result.error || 'Unable to sign you in. Please try again.')
+        );
         setSending(false);
         return;
       }

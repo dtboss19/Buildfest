@@ -17,7 +17,7 @@ interface AuthContextValue extends AuthState {
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
   ensureMyProfile: () => Promise<UserProfile | null>;
-  ensureAnonymousSession: () => Promise<User | null>;
+  ensureAnonymousSession: () => Promise<{ user: User | null; error: string | null }>;
   setError: (err: string | null) => void;
 }
 
@@ -125,13 +125,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return profile;
   }, [ensureProfileExists]);
 
-  const ensureAnonymousSession = useCallback(async (): Promise<User | null> => {
+  const ensureAnonymousSession = useCallback(async (): Promise<{ user: User | null; error: string | null }> => {
     const { data, error } = await supabase.auth.signInAnonymously();
-    if (error || !data.session?.user) return null;
+    if (error) {
+      const msg = error.message || 'Sign-in failed';
+      return { user: null, error: msg };
+    }
+    if (!data.session?.user) return { user: null, error: 'No session' };
     const sessionUser = data.session.user;
     const profile = await ensureProfileExists(sessionUser).catch(() => null);
     setState({ user: sessionUser, profile: profile ?? null, loading: false, error: null });
-    return sessionUser;
+    return { user: sessionUser, error: null };
   }, [ensureProfileExists]);
 
   useEffect(() => {
