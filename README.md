@@ -1,4 +1,6 @@
-# St. Thomas Campus Food Shelf — Nearby Resources
+# Common Table
+
+**Food resources for everyone, every day.**
 
 External resource for the University of St. Thomas (St. Paul, MN) community when the campus food shelf is closed. Shows food shelves within a **15-mile radius** of campus in a weekly calendar view.
 
@@ -50,7 +52,43 @@ For **AI food detection** in photos, set `ANTHROPIC_API_KEY` in `sms/.env` (Clau
 
 See `sms/README.md` for API details and Twilio setup.
 
+## Community layer (Supabase)
+
+The app includes a full social community layer: auth, profiles, shelter photos, community posts, chat, food rescue, and notifications.
+
+1. **Create a Supabase project** at [supabase.com](https://supabase.com).
+2. **Run the schema**: In the Supabase SQL Editor, run the contents of `supabase/migrations/001_initial_schema.sql` (creates tables, RLS, Realtime for `chat_messages`, trigger for new user profiles, seed topic chat rooms).
+3. **Create storage buckets** in Dashboard → Storage: `avatars`, `shelter-photos`, `food-rescue-photos` (all public). Add policies so authenticated users can upload; see migration comments.
+4. **Env**: In `frontend/`, copy `.env.example` to `.env` and set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
+
+After that, the frontend can use sign up/sign in, profiles, shelter pages with photos/community/chat, food rescue, community feed, and notifications.
+
+### Fixing "email rate limit exceeded" / sign-up blocked
+
+Supabase Auth limits how many sign-up emails can be sent per hour (default is low). To fix your **hosted** project:
+
+1. **Create a Personal Access Token**: [Supabase Dashboard → Account → Access Tokens](https://supabase.com/dashboard/account/tokens). Create a token (it needs access to update project config).
+2. **Run the auth fix script** from the repo root (uses `frontend/.env` for project ref):
+   ```bash
+   SUPABASE_ACCESS_TOKEN="your-token-here" ./scripts/update-supabase-auth.sh
+   ```
+   This sets **mailer_autoconfirm** (so new users can sign in without confirming email) and **rate_limit_email_sent** to 30 per hour.
+
+Alternatively, in the [Supabase Dashboard](https://supabase.com/dashboard): open your project → **Authentication** → **Rate Limits** and increase "Emails sent per hour" if the option is available; and under **Providers → Email** turn off "Confirm email" so sign-up doesn’t require a confirmation email.
+
+### Supabase CLI (optional)
+
+The repo includes Supabase CLI config (`supabase/config.toml`). Useful commands (from repo root):
+
+- **Local Supabase** (Postgres + Auth + Studio): `npx supabase start`
+- **Stop local**: `npx supabase stop`
+- **Link to your hosted project**: `npx supabase link --project-ref YOUR_PROJECT_REF` (ref is the subdomain of your project URL, e.g. `xuctylxhktmjovwfvzao`)
+- **Push migrations**: `npx supabase db push` (after linking)
+
+Local `config.toml` already has a higher `auth.rate_limit.email_sent` (30) for development.
+
 ## Tech
 
-- **Frontend** (`frontend/`): React 18 + TypeScript, Vite 5, Leaflet/react-leaflet for map. Purple and white theme; two-column layout (calendar + list left, map right); SMS signup in left panel.
-- No backend for calendar data; uploaded images in `localStorage`. Optional Python SMS bot in `sms/` (Twilio + SQLite).
+- **Frontend** (`frontend/`): React 18 + TypeScript, Vite 5, React Router, Leaflet/react-leaflet, Supabase (auth, DB, storage, Realtime). Purple and white theme; navbar (Home, Food Rescue, Community, Chat, notifications, profile); calendar + map on Home; shelter pages with Info/Photos/Community/Chat tabs.
+- **Community data**: Supabase (user_profiles, shelter_photos, community_posts, comments, chat_rooms, chat_messages, food_rescue_posts, notifications, reports). Shelter list remains in `frontend/src/data/shelters.ts`.
+- **SMS/AI**: Optional Python service in `sms/` (Twilio + Claude) unchanged.

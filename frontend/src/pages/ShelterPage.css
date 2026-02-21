@@ -1,0 +1,54 @@
+.shelter-page {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+.shelter-page-header {
+  margin-bottom: 1rem;
+}
+
+.shelter-back {
+  display: inline-block;
+  margin-bottom: 0.5rem;
+  color: var(--accent);
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+.shelter-page-title {
+  margin: 0;
+  font-size: 1.5rem;
+  color: var(--text);
+}
+
+.shelter-tabs {
+  display: flex;
+  gap: 0.25rem;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.shelter-tab {
+  padding: 0.6rem 1rem;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  background: none;
+  color: var(--textMuted);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.shelter-tab:hover {
+  color: var(--text);
+}
+
+.shelter-tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.shelter-tab-content {
+  min-height: 200px;
+}

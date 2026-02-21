@@ -1,0 +1,25 @@
+.anonymous-toggle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem 0.75rem;
+  cursor: pointer;
+}
+
+.anonymous-toggle-input {
+  width: 1.1rem;
+  height: 1.1rem;
+  accent-color: var(--accent);
+}
+
+.anonymous-toggle-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.anonymous-toggle-hint {
+  width: 100%;
+  font-size: 0.8rem;
+  color: var(--textMuted);
+}

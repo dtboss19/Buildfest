@@ -1,4 +1,4 @@
-# SMS Alerts for Food Shelf Calendar
+# SMS Alerts for Common Table
 
 Opt-in by phone number; get SMS notifications about the **closest food shelves open today** (and other updates).
 

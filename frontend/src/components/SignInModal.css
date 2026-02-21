@@ -1,0 +1,180 @@
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.modal-card {
+  position: relative;
+  width: 100%;
+  max-width: 420px;
+  max-height: 90vh;
+  overflow: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 32px rgba(107, 78, 158, 0.2);
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 1.2rem;
+  color: var(--text);
+}
+
+.modal-close {
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: none;
+  border-radius: var(--radiusSm);
+  background: var(--surface2);
+  color: var(--text);
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.modal-close:hover {
+  background: var(--border);
+}
+
+.modal-body {
+  padding: 1.25rem;
+}
+
+.signin-error {
+  margin: 0 0 1rem;
+  padding: 0.5rem 0.75rem;
+  background: #fef2f2;
+  color: #b91c1c;
+  border-radius: var(--radiusSm);
+  font-size: 0.9rem;
+}
+
+.signin-form label {
+  display: block;
+  margin-top: 0.75rem;
+  margin-bottom: 0.25rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.signin-form label:first-of-type {
+  margin-top: 0;
+}
+
+.signin-form input {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radiusSm);
+  font-size: 1rem;
+  background: var(--surface);
+  color: var(--text);
+}
+
+.signin-form input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.signin-form .btn {
+  width: 100%;
+  margin-top: 1rem;
+  padding: 0.6rem 1rem;
+  font-size: 1rem;
+}
+
+.dietary-fieldset {
+  margin-top: 1rem;
+  padding: 0.75rem 0;
+  border: none;
+}
+
+.dietary-fieldset legend {
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.dietary-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.chip {
+  padding: 0.35rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface2);
+  color: var(--text);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.chip:hover {
+  border-color: var(--accent);
+}
+
+.chip-selected {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+
+.signin-toggle {
+  margin: 1rem 0 0;
+  font-size: 0.9rem;
+  color: var(--textMuted);
+  text-align: center;
+}
+
+.link-button {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--accent);
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: var(--radiusSm);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--accentHover);
+}
+
+.btn-primary:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}

@@ -1,5 +1,5 @@
 """
-SMS alert bot + food image analysis for St. Thomas food shelf calendar.
+SMS alert bot + food image analysis for Common Table.
 - Opt-in by phone; daily SMS with closest open locations (Twilio).
 - POST /api/analyze-food-image: AI detects food and quantity in uploaded photos (Claude / Anthropic vision).
 """
@@ -94,7 +94,7 @@ def build_daily_message(day: int) -> str:
     day_names = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
     day_name = day_names[day]
     if not open_list:
-        return f"St. Thomas Food Shelf: No locations open {day_name}. Call 1-888-711-1151. Reply STOP to unsubscribe."
+        return f"Common Table: No locations open {day_name}. Call 1-888-711-1151. Reply STOP to unsubscribe."
     lines = [f"Food shelves open {day_name} (near campus):"]
     for s in open_list:
         entry = next((e for e in s["schedule"] if e["day"] == day), None)
@@ -148,7 +148,7 @@ def subscribe():
             conn.execute("INSERT OR REPLACE INTO subscribers (phone) VALUES (?)", (phone,))
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
-    welcome = "You're signed up for St. Thomas food shelf alerts. We'll text you which locations are open and closest to campus. Reply STOP to unsubscribe."
+    welcome = "You're signed up for Common Table alerts. We'll text you which locations are open and closest to campus. Reply STOP to unsubscribe."
     if send_sms(phone, welcome):
         return jsonify({"ok": True, "message": "Subscribed. Check your phone for confirmation."})
     return jsonify({"ok": True, "message": "Subscribed. (SMS not sent—check server Twilio config.)"})

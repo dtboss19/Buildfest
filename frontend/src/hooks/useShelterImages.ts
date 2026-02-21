@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import type { UploadedImage } from '../types';
 
-const STORAGE_KEY = 'stthomas-food-shelf-images';
+const STORAGE_KEY = 'common-table-images';
 
 function loadAll(): Record<string, UploadedImage[]> {
   try {

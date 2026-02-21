@@ -1,5 +1,5 @@
 {
-  "name": "stthomas-food-shelf-calendar",
+  "name": "common-table",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -9,10 +9,12 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.45.0",
     "leaflet": "^1.9.4",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-leaflet": "^4.2.1"
+    "react-leaflet": "^4.2.1",
+    "react-router-dom": "^6.28.0"
   },
   "devDependencies": {
     "@types/leaflet": "^1.9.8",

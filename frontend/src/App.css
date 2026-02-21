@@ -1,3 +1,12 @@
+.route-fade {
+  animation: routeFade 0.25s ease-out;
+}
+
+@keyframes routeFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 .app {
   min-height: 100vh;
   display: flex;
@@ -166,7 +175,26 @@
   margin: 0.5rem 0 0;
   font-size: 1rem;
   font-weight: 600;
+}
+
+.open-now-banner {
+  padding: 0.6rem 0.75rem;
+  border-radius: var(--radius);
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+}
+
+.open-now-banner-green {
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #22c55e;
+}
+
+.open-now-banner-grey {
+  background: var(--surface1);
   color: var(--text);
+  border: 1px solid var(--border);
 }
 
 .shelters-list-wrap {
@@ -192,6 +220,11 @@
 
 .panel-footer p {
   margin: 0;
+}
+
+.panel-footer-app {
+  margin-top: 0.5rem;
+  font-size: 0.8rem;
 }
 
 .panel-footer a {
@@ -237,13 +270,114 @@
 .shelter-card {
   background: var(--surface2);
   border: 1px solid var(--border);
+  border-left-width: 4px;
+  border-left-color: var(--border);
   border-radius: var(--radius);
-  padding: 1rem;
+  padding: 0.75rem 1rem;
+  position: relative;
 }
 
 .shelter-card.open-today {
   border-color: var(--accent);
+  border-left-color: #22c55e;
   box-shadow: 0 0 0 1px var(--accent);
+}
+
+.shelter-card-save-btn {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--textMuted);
+  cursor: pointer;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.shelter-card-save-btn:hover {
+  color: var(--accent);
+}
+
+.shelter-card-hours-inline {
+  font-size: 0.85rem;
+  color: var(--textMuted);
+  margin: 0.2rem 0 0;
+}
+
+.shelter-card-food-types {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-top: 0.25rem;
+}
+
+.shelter-card-food-type {
+  padding: 0.15rem 0.4rem;
+  font-size: 0.7rem;
+  border-radius: 4px;
+  background: var(--surface1);
+  color: var(--textMuted);
+  border: 1px solid var(--border);
+}
+
+.shelter-card-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0.25rem 0.5rem;
+}
+
+.shelter-card-summary .shelter-card-header {
+  flex: 1;
+  min-width: 0;
+  margin-bottom: 0;
+}
+
+.shelter-card-about {
+  width: 100%;
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--textMuted);
+  line-height: 1.3;
+}
+
+.shelter-card-expand-btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius);
+  background: var(--surface1);
+  color: var(--textMuted);
+  cursor: pointer;
+  font-size: 0.75rem;
+  transition: background 0.15s, color 0.15s;
+}
+
+.shelter-card-expand-btn:hover {
+  background: var(--border);
+  color: var(--text);
+}
+
+.shelter-card-expand-icon {
+  line-height: 1;
+}
+
+.shelter-card-details {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
 }
 
 .badge-open {
@@ -257,6 +391,9 @@
   color: white;
   border-radius: 4px;
 }
+
+.badge.staff { background: #22c55e; color: white; }
+.badge.community { background: #8b5cf6; color: white; }
 
 .shelter-card-header {
   display: flex;
@@ -278,7 +415,8 @@
   font-weight: 600;
 }
 
-.shelter-address {
+.shelter-address,
+.shelter-card-details .shelter-address {
   margin: 0 0 0.25em;
   font-size: 0.9rem;
   color: var(--textMuted);
@@ -817,4 +955,41 @@
   .right-panel {
     min-height: 350px;
   }
+}
+
+@media (max-width: 390px) {
+  .app-main,
+  .left-panel-inner {
+    overflow-x: hidden;
+    min-width: 0;
+  }
+  .shelter-card-summary,
+  .shelter-card-header {
+    min-width: 0;
+  }
+  .open-now-banner { font-size: 0.85rem; }
+}
+
+/* Layout + pages */
+.app-main {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.page-loading {
+  padding: 2rem;
+  text-align: center;
+  color: var(--textMuted);
+}
+
+.login-page {
+  padding: 2rem;
+  text-align: center;
+}
+
+.login-page-hint {
+  margin: 1rem 0 0;
+  color: var(--textMuted);
 }

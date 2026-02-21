@@ -1,0 +1,170 @@
+.profile-page {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+.profile-header {
+  display: flex;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.profile-avatar {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--surface2);
+}
+
+.profile-meta {
+  flex: 1;
+}
+
+.profile-name {
+  margin: 0 0 0.5rem;
+  font-size: 1.5rem;
+  color: var(--text);
+}
+
+.profile-bio {
+  margin: 0 0 0.5rem;
+  color: var(--textMuted);
+  font-size: 0.95rem;
+}
+
+.profile-dietary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.5rem;
+}
+
+.profile-tag {
+  padding: 0.25rem 0.5rem;
+  background: var(--surface2);
+  border-radius: 4px;
+  font-size: 0.8rem;
+  color: var(--text);
+}
+
+.profile-joined {
+  margin: 0 0 1rem;
+  font-size: 0.85rem;
+  color: var(--textMuted);
+}
+
+.profile-section {
+  margin-top: 1.5rem;
+}
+
+.profile-section h2 {
+  margin: 0 0 1rem;
+  font-size: 1.1rem;
+  color: var(--text);
+}
+
+.saved-shelters-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.saved-shelters-list li {
+  margin-bottom: 0.5rem;
+}
+
+.saved-shelters-list a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.saved-shelters-list a:hover {
+  text-decoration: underline;
+}
+
+.profile-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.profile-tab {
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radiusSm);
+  background: var(--surface2);
+  color: var(--text);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.profile-tab.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+
+.profile-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 1rem;
+}
+
+.profile-photo-card {
+  position: relative;
+  border-radius: var(--radiusSm);
+  overflow: hidden;
+  background: var(--surface2);
+}
+
+.profile-photo-card img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+}
+
+.profile-photo-card a {
+  display: block;
+}
+
+.profile-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.profile-list li {
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.profile-list a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.profile-list .profile-item-meta {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.85rem;
+  color: var(--textMuted);
+}
+
+.anon-badge {
+  font-size: 0.75rem;
+  color: var(--textMuted);
+  margin-left: 0.5rem;
+}
+
+.profile-empty {
+  color: var(--textMuted);
+  margin: 1rem 0 0;
+}
+
+.page-error {
+  padding: 2rem;
+  text-align: center;
+  color: #b91c1c;
+}
