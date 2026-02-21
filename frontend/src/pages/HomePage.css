@@ -521,6 +521,8 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+  /* Slightly toned-down so surplus food looks candid, not gourmet */
+  filter: saturate(0.92) contrast(0.98);
 }
 
 .home-rescue-card-placeholder {
