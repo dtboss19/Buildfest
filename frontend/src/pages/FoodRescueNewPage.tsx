@@ -31,11 +31,11 @@ export function FoodRescueNewPage() {
       const result = await ensureAnonymousSession();
       currentUser = result.user;
       if (!currentUser) {
-        setError(
-          result.error && /anonymous|disabled|422|sign.?in/i.test(result.error)
-            ? 'Anonymous sign-in is not enabled for this app. The project admin must enable it in Supabase: Dashboard → Authentication → Providers → Anonymous sign-ins.'
-            : (result.error || 'Unable to sign you in. Please try again.')
-        );
+        const isLikelyAnonDisabled = result.error && /anonymous|disabled|422|sign.?in|unprocessable/i.test(result.error);
+        const hint = isLikelyAnonDisabled
+          ? 'Anonymous sign-in may be disabled. Enable it in Supabase: Dashboard → Authentication → Providers → Anonymous sign-ins. Also check Auth → Settings and ensure sign-ups are not disabled.'
+          : (result.error || 'Unable to sign you in. Please try again.');
+        setError(isLikelyAnonDisabled && result.error ? `${hint} (Error: ${result.error})` : hint);
         setLoading(false);
         return;
       }

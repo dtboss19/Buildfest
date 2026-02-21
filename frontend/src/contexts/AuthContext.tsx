@@ -147,10 +147,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let mounted = true;
 
     const init = async (retry = false) => {
-      // #region agent log
-      const t0 = Date.now();
-      fetch('http://127.0.0.1:7805/ingest/31f8c09b-0f5d-4b67-a668-61f689c5aeb4', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'e731f4' }, body: JSON.stringify({ sessionId: 'e731f4', location: 'AuthContext.tsx:init', message: 'init_start', data: { retry, ts: t0 }, hypothesisId: 'H1', timestamp: Date.now() }) }).catch(() => {});
-      // #endregion
       try {
         // Single auth call to avoid lock contention: getSession + signInAnonymously both acquire the same lock and can timeout.
         const anonResult = await Promise.race([
@@ -161,9 +157,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         ]);
         const anonData = anonResult.data;
         const anonErr = anonResult.error;
-        // #region agent log
-        fetch('http://127.0.0.1:7805/ingest/31f8c09b-0f5d-4b67-a668-61f689c5aeb4', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'e731f4' }, body: JSON.stringify({ sessionId: 'e731f4', location: 'AuthContext.tsx:after_signInAnonymously', message: 'after_signInAnonymously', data: { ok: !anonErr && !!anonData?.session?.user, err: anonErr?.message ?? null, elapsed: Date.now() - t0 }, hypothesisId: 'H2', timestamp: Date.now() }) }).catch(() => {});
-        // #endregion
         if (!mounted) return;
         const session = anonData?.session;
         if (anonErr || !session?.user) {
@@ -172,21 +165,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         // Set user and loading:false immediately so UI is responsive; load profile in background.
         setState({ user: session.user, profile: null, loading: false, error: null });
-        // #region agent log
-        fetch('http://127.0.0.1:7805/ingest/31f8c09b-0f5d-4b67-a668-61f689c5aeb4', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'e731f4' }, body: JSON.stringify({ sessionId: 'e731f4', location: 'AuthContext.tsx:before_ensureProfile', message: 'before_ensureProfile', data: { elapsed: Date.now() - t0 }, hypothesisId: 'H4', timestamp: Date.now() }) }).catch(() => {});
-        // #endregion
         ensureProfileExists(session.user).then((profile) => {
           if (!mounted) return;
           setState((s) => (s.user?.id === session.user.id ? { ...s, profile: profile ?? null } : s));
-          // #region agent log
-          fetch('http://127.0.0.1:7805/ingest/31f8c09b-0f5d-4b67-a668-61f689c5aeb4', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'e731f4' }, body: JSON.stringify({ sessionId: 'e731f4', location: 'AuthContext.tsx:init_done', message: 'init_done', data: { hasProfile: !!profile, totalElapsed: Date.now() - t0 }, hypothesisId: 'H4', timestamp: Date.now() }) }).catch(() => {});
-          // #endregion
         }).catch(() => {});
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
-        // #region agent log
-        fetch('http://127.0.0.1:7805/ingest/31f8c09b-0f5d-4b67-a668-61f689c5aeb4', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'e731f4' }, body: JSON.stringify({ sessionId: 'e731f4', location: 'AuthContext.tsx:init_catch', message: 'init_catch', data: { msg: msg.slice(0, 120), isLockOrTimeout: isAuthLockError(msg) || msg === 'timeout', retry }, hypothesisId: 'H1', timestamp: Date.now() }) }).catch(() => {});
-        // #endregion
         if (!mounted) return;
         // Always stop loading so the app never stays stuck; retry in background if lock/timeout.
         setState((s) => (s.loading ? { ...s, user: null, profile: null, loading: false, error: null } : s));
@@ -200,9 +184,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     init();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      // #region agent log
-      fetch('http://127.0.0.1:7805/ingest/31f8c09b-0f5d-4b67-a668-61f689c5aeb4', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'e731f4' }, body: JSON.stringify({ sessionId: 'e731f4', location: 'AuthContext.tsx:onAuthStateChange', message: 'onAuthStateChange', data: { event, hasSession: !!session }, hypothesisId: 'H3', timestamp: Date.now() }) }).catch(() => {});
-      // #endregion
       if (!mounted) return;
       if (event === 'SIGNED_OUT' || !session) {
         const { data: anonData } = await supabase.auth.signInAnonymously();

@@ -35,8 +35,7 @@ export function ShelterCommunityTab({ shelterId }: ShelterCommunityTabProps) {
         .eq('shelter_id', shelterId)
         .order('created_at', { ascending: false });
       setPosts((data ?? []) as CommunityPost[]);
-    } catch (err) {
-      fetch('http://127.0.0.1:7805/ingest/31f8c09b-0f5d-4b67-a668-61f689c5aeb4', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'f0ee74' }, body: JSON.stringify({ sessionId: 'f0ee74', location: 'ShelterCommunityTab.tsx:fetchPosts', message: 'error', data: { err: String(err) }, hypothesisId: 'H5', timestamp: Date.now() }) }).catch(() => {});
+    } catch {
       setPosts([]);
     }
   };
@@ -56,11 +55,7 @@ export function ShelterCommunityTab({ shelterId }: ShelterCommunityTabProps) {
       const p = supabase.from('comments').select('*').eq('post_id', expandedPostId).order('created_at', { ascending: true }).then(({ data }) => {
         setCommentsByPost((prev) => ({ ...prev, [expandedPostId]: (data ?? []) as Comment[] }));
       });
-      void Promise.resolve(p).catch((err: unknown) => {
-        // #region agent log
-        fetch('http://127.0.0.1:7805/ingest/31f8c09b-0f5d-4b67-a668-61f689c5aeb4', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'f0ee74' }, body: JSON.stringify({ sessionId: 'f0ee74', location: 'ShelterCommunityTab.tsx:comments', message: 'rejection', data: { err: String(err) }, hypothesisId: 'H2', timestamp: Date.now() }) }).catch(() => {});
-        // #endregion
-      });
+      void Promise.resolve(p).catch(() => {});
     }
   }, [expandedPostId, commentsByPost]);
 

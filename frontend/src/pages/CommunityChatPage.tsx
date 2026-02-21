@@ -55,12 +55,7 @@ export function CommunityChatPage() {
     const p = supabase.from('chat_messages').select('*').eq('room_id', selectedRoomId).order('created_at', { ascending: true }).then(({ data }) => {
       setMessages((data ?? []) as ChatMessage[]);
     });
-    void Promise.resolve(p).catch((err: unknown) => {
-      // #region agent log
-      fetch('http://127.0.0.1:7805/ingest/31f8c09b-0f5d-4b67-a668-61f689c5aeb4', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'f0ee74' }, body: JSON.stringify({ sessionId: 'f0ee74', location: 'CommunityChatPage.tsx:chat_messages', message: 'rejection', data: { err: String(err) }, hypothesisId: 'H2', timestamp: Date.now() }) }).catch(() => {});
-      // #endregion
-      setMessages([]);
-    });
+    void Promise.resolve(p).catch(() => setMessages([]));
     const channel = supabase.channel(`room:${selectedRoomId}`).on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `room_id=eq.${selectedRoomId}` }, (payload) => {
       setMessages((prev) => [...prev, payload.new as ChatMessage]);
     }).subscribe();
@@ -101,11 +96,11 @@ export function CommunityChatPage() {
       const result = await ensureAnonymousSession();
       currentUser = result.user;
       if (!currentUser) {
-        setSendError(
-          result.error && /anonymous|disabled|422|sign.?in/i.test(result.error)
-            ? 'Anonymous sign-in is not enabled for this app. The project admin must enable it in Supabase: Dashboard → Authentication → Providers → Anonymous sign-ins.'
-            : (result.error || 'Unable to sign you in. Please try again.')
-        );
+        const isLikelyAnonDisabled = result.error && /anonymous|disabled|422|sign.?in|unprocessable/i.test(result.error);
+        const hint = isLikelyAnonDisabled
+          ? 'Anonymous sign-in may be disabled. Enable it in Supabase: Dashboard → Authentication → Providers → Anonymous sign-ins. Also check Auth → Settings and ensure sign-ups are not disabled.'
+          : (result.error || 'Unable to sign you in. Please try again.');
+        setSendError(isLikelyAnonDisabled && result.error ? `${hint} (Error: ${result.error})` : hint);
         setSending(false);
         return;
       }

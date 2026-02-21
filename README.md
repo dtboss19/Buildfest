@@ -84,7 +84,10 @@ After that, the frontend works with no sign-up or sign-in: shelter pages, photos
 
 ### 422 when sending chat or creating a post ("Cannot log you in")
 
-**Anonymous sign-ins are disabled.** Enable them: [Supabase Dashboard](https://supabase.com/dashboard) → your project → **Authentication** → **Providers** → turn on **Anonymous sign-ins**. Then try again.
+1. **Confirm the project**: In the dashboard, ensure you're in the project that matches `VITE_SUPABASE_URL` (e.g. `xuctylxhktmjovwfvzao.supabase.co`).
+2. **Enable Anonymous sign-ins**: [Supabase Dashboard](https://supabase.com/dashboard) → your project → **Authentication** → **Providers** → turn on **Anonymous sign-ins**.
+3. **Check "Disable new sign ups"**: In **Authentication** → **Settings** (or **Providers**), if there is an option like "Disable new sign ups" or "Enable sign ups", ensure new sign-ups are allowed (anonymous sign-in uses the signup endpoint).
+4. **Retry**: Hard refresh or try in an incognito window; wait a minute after changing settings.
 
 ### Supabase timing out or login stuck?
 
