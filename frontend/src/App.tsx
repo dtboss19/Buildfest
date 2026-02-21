@@ -8,6 +8,7 @@ import { FoodRescuePage } from './pages/FoodRescuePage';
 import { FoodRescueNewPage } from './pages/FoodRescueNewPage';
 import { CommunityPage } from './pages/CommunityPage';
 import { CommunityChatPage } from './pages/CommunityChatPage';
+import { AboutPage } from './pages/AboutPage';
 import './App.css';
 
 export default function App() {
@@ -23,6 +24,7 @@ export default function App() {
             <Route path="food-rescue/new" element={<FoodRescueNewPage />} />
             <Route path="community" element={<CommunityPage />} />
             <Route path="community/chat" element={<CommunityChatPage />} />
+            <Route path="about" element={<AboutPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         </Routes>

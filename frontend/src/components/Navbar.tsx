@@ -23,6 +23,7 @@ export function Navbar() {
           <NavLink to="/food-rescue" className={({ isActive }) => `navbar-link ${isActive ? 'navbar-link-active' : ''}`}>Food Rescue</NavLink>
           <NavLink to="/community" className={({ isActive }) => `navbar-link ${isActive ? 'navbar-link-active' : ''}`} end>Community</NavLink>
           <NavLink to="/community/chat" className={({ isActive }) => `navbar-link ${isActive ? 'navbar-link-active' : ''}`}>Chat</NavLink>
+          <NavLink to="/about" className={({ isActive }) => `navbar-link ${isActive ? 'navbar-link-active' : ''}`}>About</NavLink>
         </nav>
       </div>
     </header>
