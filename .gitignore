@@ -1,0 +1,21 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+frontend/dist/
+*.tsbuildinfo
+
+# Env and secrets (sms has its own .gitignore for .env)
+.env
+.env.local
+.env.*.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
